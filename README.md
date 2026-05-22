@@ -41,3 +41,15 @@ For local web development, set Supabase Auth URL configuration to:
 ```text
 http://127.0.0.1:5173
 ```
+
+## Vercel
+
+This repo includes `vercel.json` so Vercel builds Flutter Web and serves `build/web`.
+
+Add these environment variables in Vercel Project Settings if you want live Supabase auth/data:
+
+```text
+SUPABASE_URL
+SUPABASE_ANON_KEY
+SUPABASE_REDIRECT_URL
+```
