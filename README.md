@@ -1,17 +1,43 @@
-# gravitymeet
+# Jeevan Arogya
 
-A new Flutter project.
+A Flutter healthcare assistance app with a polished mobile UI, emergency SOS flows, doctor discovery, hospital and medicine search, appointment screens, Supabase-ready auth, and database schema support.
 
-## Getting Started
+## Features
 
-This project is a starting point for a Flutter application.
+- Modern Flutter landing and login experience
+- Mobile OTP and Gmail auth integration via Supabase
+- Emergency SOS card with animated pulse effect
+- Doctor listings, appointment booking UI, hospital discovery, emergency cab UI
+- Supabase schema for profiles, doctors, appointments, SOS alerts, cab requests, and supporting data
+- Demo fallback mode for local development
 
-A few resources to get you started if this is your first Flutter project:
+## Setup
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+1. Copy `.env.example` to `.env`.
+2. Add your Supabase URL and anon key.
+3. Run the SQL in `supabase/schema.sql` inside Supabase SQL Editor.
+4. Install packages:
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```bash
+flutter pub get
+```
+
+5. Run locally:
+
+```bash
+flutter run -d chrome
+```
+
+## Supabase Auth
+
+For Google login, enable the Google provider in Supabase and add this callback URL in Google Cloud Console:
+
+```text
+https://swyerkuqipjjehjidxul.supabase.co/auth/v1/callback
+```
+
+For local web development, set Supabase Auth URL configuration to:
+
+```text
+http://127.0.0.1:5173
+```
