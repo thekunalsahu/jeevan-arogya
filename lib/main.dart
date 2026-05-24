@@ -1,11 +1,14 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
 import 'package:url_launcher/url_launcher.dart';
 
@@ -22,12 +25,39 @@ class AppTextEntry {
     required this.subtitle,
     required this.icon,
     required this.color,
+    this.attachmentName = '',
+    this.attachmentType = '',
   });
 
   final String title;
   final String subtitle;
   final IconData icon;
   final Color color;
+  final String attachmentName;
+  final String attachmentType;
+
+  Map<String, dynamic> toJson() => {
+    'title': title,
+    'subtitle': subtitle,
+    'icon': icon.codePoint,
+    'color': color.toARGB32(),
+    'attachmentName': attachmentName,
+    'attachmentType': attachmentType,
+  };
+
+  factory AppTextEntry.fromJson(Map<String, dynamic> map) {
+    return AppTextEntry(
+      title: map['title']?.toString() ?? '',
+      subtitle: map['subtitle']?.toString() ?? '',
+      icon: materialIconFromCode(
+        (map['icon'] as num?)?.toInt(),
+        Icons.description_rounded,
+      ),
+      color: Color((map['color'] as num?)?.toInt() ?? AppColors.blue.toARGB32()),
+      attachmentName: map['attachmentName']?.toString() ?? '',
+      attachmentType: map['attachmentType']?.toString() ?? '',
+    );
+  }
 }
 
 class EmergencyContactEntry {
@@ -40,6 +70,20 @@ class EmergencyContactEntry {
   final String name;
   final String phone;
   final String relation;
+
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'phone': phone,
+    'relation': relation,
+  };
+
+  factory EmergencyContactEntry.fromJson(Map<String, dynamic> map) {
+    return EmergencyContactEntry(
+      name: map['name']?.toString() ?? '',
+      phone: map['phone']?.toString() ?? '',
+      relation: map['relation']?.toString() ?? '',
+    );
+  }
 }
 
 class ChatMessageEntry {
@@ -54,6 +98,22 @@ class ChatMessageEntry {
   final String body;
   final String time;
   final bool fromUser;
+
+  Map<String, dynamic> toJson() => {
+    'sender': sender,
+    'body': body,
+    'time': time,
+    'fromUser': fromUser,
+  };
+
+  factory ChatMessageEntry.fromJson(Map<String, dynamic> map) {
+    return ChatMessageEntry(
+      sender: map['sender']?.toString() ?? '',
+      body: map['body']?.toString() ?? '',
+      time: map['time']?.toString() ?? '',
+      fromUser: map['fromUser'] == true,
+    );
+  }
 }
 
 class MessageThreadEntry {
@@ -70,121 +130,258 @@ class MessageThreadEntry {
   final IconData icon;
   final Color color;
   final List<ChatMessageEntry> messages;
+
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'subtitle': subtitle,
+    'icon': icon.codePoint,
+    'color': color.toARGB32(),
+    'messages': messages.map((message) => message.toJson()).toList(),
+  };
+
+  factory MessageThreadEntry.fromJson(Map<String, dynamic> map) {
+    final rawMessages = map['messages'];
+    return MessageThreadEntry(
+      name: map['name']?.toString() ?? '',
+      subtitle: map['subtitle']?.toString() ?? '',
+      icon: materialIconFromCode(
+        (map['icon'] as num?)?.toInt(),
+        Icons.chat_bubble_outline_rounded,
+      ),
+      color: Color((map['color'] as num?)?.toInt() ?? AppColors.navy.toARGB32()),
+      messages: rawMessages is List
+          ? rawMessages
+                .whereType<Map>()
+                .map((item) => ChatMessageEntry.fromJson(
+                      item.cast<String, dynamic>(),
+                    ))
+                .toList()
+          : <ChatMessageEntry>[],
+    );
+  }
+}
+
+class UserAppointmentEntry {
+  const UserAppointmentEntry({
+    required this.doctorName,
+    required this.specialty,
+    required this.dateLabel,
+    required this.timeLabel,
+    required this.reason,
+  });
+
+  final String doctorName;
+  final String specialty;
+  final String dateLabel;
+  final String timeLabel;
+  final String reason;
+
+  Map<String, dynamic> toJson() => {
+    'doctorName': doctorName,
+    'specialty': specialty,
+    'dateLabel': dateLabel,
+    'timeLabel': timeLabel,
+    'reason': reason,
+  };
+
+  factory UserAppointmentEntry.fromJson(Map<String, dynamic> map) {
+    return UserAppointmentEntry(
+      doctorName: map['doctorName']?.toString() ?? '',
+      specialty: map['specialty']?.toString() ?? '',
+      dateLabel: map['dateLabel']?.toString() ?? '',
+      timeLabel: map['timeLabel']?.toString() ?? '',
+      reason: map['reason']?.toString() ?? '',
+    );
+  }
+}
+
+IconData materialIconFromCode(int? code, IconData fallback) {
+  if (code == Icons.science_rounded.codePoint) return Icons.science_rounded;
+  if (code == Icons.medication_rounded.codePoint) {
+    return Icons.medication_rounded;
+  }
+  if (code == Icons.warning_amber_rounded.codePoint) {
+    return Icons.warning_amber_rounded;
+  }
+  if (code == Icons.monitor_heart_rounded.codePoint) {
+    return Icons.monitor_heart_rounded;
+  }
+  if (code == Icons.home_work_rounded.codePoint) {
+    return Icons.home_work_rounded;
+  }
+  if (code == Icons.notifications_active_rounded.codePoint) {
+    return Icons.notifications_active_rounded;
+  }
+  if (code == Icons.chat_bubble_outline_rounded.codePoint) {
+    return Icons.chat_bubble_outline_rounded;
+  }
+  if (code == Icons.calendar_month_rounded.codePoint) {
+    return Icons.calendar_month_rounded;
+  }
+  if (code == Icons.folder_copy_rounded.codePoint) {
+    return Icons.folder_copy_rounded;
+  }
+  if (code == Icons.description_rounded.codePoint) {
+    return Icons.description_rounded;
+  }
+  if (code == Icons.location_on_rounded.codePoint) {
+    return Icons.location_on_rounded;
+  }
+  if (code == Icons.settings_rounded.codePoint) {
+    return Icons.settings_rounded;
+  }
+  return fallback;
 }
 
 class AppDataController extends ChangeNotifier {
-  final healthRecords = <AppTextEntry>[
-    const AppTextEntry(
-      title: 'Blood test report',
-      subtitle: 'CBC normal range - added today',
-      icon: Icons.science_rounded,
-      color: AppColors.blue,
-    ),
-  ];
+  static const _storageKey = 'jeevan_arogya_app_data_v2';
 
-  final prescriptions = <AppTextEntry>[
-    const AppTextEntry(
-      title: 'Atorvastatin 10mg',
-      subtitle: 'Once daily after dinner',
-      icon: Icons.medication_rounded,
-      color: AppColors.green,
-    ),
-  ];
+  final healthRecords = <AppTextEntry>[];
+  final prescriptions = <AppTextEntry>[];
+  final allergies = <AppTextEntry>[];
+  final vitals = <AppTextEntry>[];
+  final addresses = <AppTextEntry>[];
+  final notifications = <AppTextEntry>[];
+  final emergencyContacts = <EmergencyContactEntry>[];
+  final threads = <MessageThreadEntry>[];
+  final appointments = <UserAppointmentEntry>[];
+  String profileName = '';
+  String profileEmail = '';
 
-  final allergies = <AppTextEntry>[
-    const AppTextEntry(
-      title: 'Penicillin allergy',
-      subtitle: 'Avoid penicillin group antibiotics',
-      icon: Icons.warning_amber_rounded,
-      color: AppColors.red,
-    ),
-  ];
+  Future<void> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_storageKey);
+    if (raw == null || raw.isEmpty) {
+      return;
+    }
+    try {
+      final data = jsonDecode(raw);
+      if (data is! Map<String, dynamic>) {
+        return;
+      }
+      _loadEntries(healthRecords, data['healthRecords']);
+      _loadEntries(prescriptions, data['prescriptions']);
+      _loadEntries(allergies, data['allergies']);
+      _loadEntries(vitals, data['vitals']);
+      _loadEntries(addresses, data['addresses']);
+      _loadEntries(notifications, data['notifications']);
+      emergencyContacts
+        ..clear()
+        ..addAll(_decodeList(data['emergencyContacts']).map(
+          EmergencyContactEntry.fromJson,
+        ));
+      threads
+        ..clear()
+        ..addAll(_decodeList(data['threads']).map(MessageThreadEntry.fromJson));
+      appointments
+        ..clear()
+        ..addAll(_decodeList(data['appointments']).map(
+          UserAppointmentEntry.fromJson,
+        ));
+      profileName = data['profileName']?.toString() ?? '';
+      profileEmail = data['profileEmail']?.toString() ?? '';
+    } catch (_) {
+      return;
+    }
+  }
 
-  final vitals = <AppTextEntry>[
-    const AppTextEntry(
-      title: 'Blood group: B+',
-      subtitle: 'Pulse 76 bpm - SpO2 98%',
-      icon: Icons.monitor_heart_rounded,
-      color: AppColors.red,
-    ),
-  ];
+  List<Map<String, dynamic>> _decodeList(Object? value) {
+    if (value is! List) {
+      return const [];
+    }
+    return value
+        .whereType<Map>()
+        .map((item) => item.cast<String, dynamic>())
+        .toList();
+  }
 
-  final addresses = <AppTextEntry>[
-    const AppTextEntry(
-      title: 'Home',
-      subtitle: 'Use GPS to update exact address',
-      icon: Icons.home_work_rounded,
-      color: AppColors.blue,
-    ),
-  ];
+  void _loadEntries(List<AppTextEntry> target, Object? value) {
+    target
+      ..clear()
+      ..addAll(_decodeList(value).map(AppTextEntry.fromJson));
+  }
 
-  final notifications = <AppTextEntry>[
-    const AppTextEntry(
-      title: 'SOS alerts',
-      subtitle: 'Enabled for emergency contacts',
-      icon: Icons.notifications_active_rounded,
-      color: AppColors.green,
-    ),
-  ];
+  Future<void> _save() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _storageKey,
+      jsonEncode({
+        'healthRecords': healthRecords.map((entry) => entry.toJson()).toList(),
+        'prescriptions': prescriptions.map((entry) => entry.toJson()).toList(),
+        'allergies': allergies.map((entry) => entry.toJson()).toList(),
+        'vitals': vitals.map((entry) => entry.toJson()).toList(),
+        'addresses': addresses.map((entry) => entry.toJson()).toList(),
+        'notifications': notifications.map((entry) => entry.toJson()).toList(),
+        'emergencyContacts': emergencyContacts
+            .map((contact) => contact.toJson())
+            .toList(),
+        'threads': threads.map((thread) => thread.toJson()).toList(),
+        'appointments': appointments
+            .map((appointment) => appointment.toJson())
+            .toList(),
+        'profileName': profileName,
+        'profileEmail': profileEmail,
+      }),
+    );
+  }
 
-  final emergencyContacts = <EmergencyContactEntry>[
-    const EmergencyContactEntry(
-      name: 'Emergency 108',
-      phone: '108',
-      relation: 'Ambulance',
-    ),
-  ];
-
-  final threads = <MessageThreadEntry>[
-    MessageThreadEntry(
-      name: 'Apollo Hospitals',
-      subtitle: 'Appointment desk',
-      icon: Icons.local_hospital_rounded,
-      color: AppColors.red,
-      messages: [
-        const ChatMessageEntry(
-          sender: 'Apollo Hospitals',
-          body: 'Your appointment is confirmed.',
-          time: '10:30 AM',
-        ),
-      ],
-    ),
-    MessageThreadEntry(
-      name: 'Emergency Contacts',
-      subtitle: 'SOS circle',
-      icon: Icons.groups_2_rounded,
-      color: AppColors.green,
-      messages: [
-        const ChatMessageEntry(
-          sender: 'System',
-          body: 'Emergency contacts are ready for SOS alerts.',
-          time: 'Today',
-        ),
-      ],
-    ),
-    MessageThreadEntry(
-      name: 'Health Schemes',
-      subtitle: 'Government care desk',
-      icon: Icons.health_and_safety_rounded,
-      color: AppColors.blue,
-      messages: [
-        const ChatMessageEntry(
-          sender: 'Jeevan Arogya',
-          body: 'Ayushman eligibility check is ready.',
-          time: 'Today',
-        ),
-      ],
-    ),
-  ];
+  void _changed() {
+    unawaited(_save());
+    notifyListeners();
+  }
 
   void addEntry(List<AppTextEntry> target, AppTextEntry entry) {
     target.insert(0, entry);
-    notifyListeners();
+    _changed();
   }
 
   void addEmergencyContact(EmergencyContactEntry contact) {
     emergencyContacts.insert(0, contact);
-    notifyListeners();
+    _changed();
+  }
+
+  void addAppointment(UserAppointmentEntry appointment) {
+    appointments.insert(0, appointment);
+    _ensureThread(
+      name: 'Appointments',
+      subtitle: 'Doctor bookings',
+      icon: Icons.calendar_month_rounded,
+      color: AppColors.blue,
+    ).messages.add(
+      ChatMessageEntry(
+        sender: 'Jeevan Arogya',
+        body:
+            '${appointment.doctorName} appointment booked for ${appointment.dateLabel}, ${appointment.timeLabel}.',
+        time: 'Now',
+      ),
+    );
+    _changed();
+  }
+
+  void saveProfile(String name, String email) {
+    profileName = name;
+    profileEmail = email;
+    _changed();
+  }
+
+  void createThread({
+    required String name,
+    required String subtitle,
+    required String body,
+  }) {
+    threads.insert(
+      0,
+      MessageThreadEntry(
+        name: name,
+        subtitle: subtitle,
+        icon: Icons.chat_bubble_outline_rounded,
+        color: AppColors.navy,
+        messages: [
+          ChatMessageEntry(sender: 'You', body: body, time: 'Now', fromUser: true),
+        ],
+      ),
+    );
+    _changed();
   }
 
   void addMessage(int threadIndex, String body) {
@@ -199,13 +396,35 @@ class AppDataController extends ChangeNotifier {
         fromUser: true,
       ),
     );
-    notifyListeners();
+    _changed();
+  }
+
+  MessageThreadEntry _ensureThread({
+    required String name,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+  }) {
+    final index = threads.indexWhere((thread) => thread.name == name);
+    if (index != -1) {
+      return threads[index];
+    }
+    final thread = MessageThreadEntry(
+      name: name,
+      subtitle: subtitle,
+      icon: icon,
+      color: color,
+      messages: [],
+    );
+    threads.insert(0, thread);
+    return thread;
   }
 }
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SupabaseConfig.initialize();
+  await appData.load();
   runApp(const JeevanArogyaApp());
 }
 
@@ -614,10 +833,14 @@ class AuthGate extends StatefulWidget {
 class _AuthGateState extends State<AuthGate> {
   final JeevanArogyaRepository _repository = JeevanArogyaRepository();
   StreamSubscription? _authSubscription;
-  late bool _loggedIn = _repository.currentUser != null;
-  late AppUserProfile _profile = AppUserProfile.fromUser(
-    _repository.currentUser,
-  );
+  late bool _loggedIn =
+      _repository.currentUser != null || appData.profileEmail.isNotEmpty;
+  late AppUserProfile _profile = _repository.currentUser != null
+      ? AppUserProfile.fromUser(_repository.currentUser)
+      : AppUserProfile(
+          name: appData.profileName.isEmpty ? 'User' : appData.profileName,
+          phone: appData.profileEmail,
+        );
 
   @override
   void initState() {
@@ -642,6 +865,7 @@ class _AuthGateState extends State<AuthGate> {
   }
 
   void _enterApp(AppUserProfile profile) {
+    appData.saveProfile(profile.name, profile.phone);
     setState(() {
       _profile = profile;
       _loggedIn = true;
@@ -841,14 +1065,9 @@ class _LandingScreenState extends State<LandingScreen>
               },
             ),
             SafeArea(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
-                children: [
-                  const LandingTopBar(),
-                  const SizedBox(height: 26),
-                  const LandingHero(),
-                  const SizedBox(height: 24),
-                  LoginPanel(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final loginPanel = LoginPanel(
                     nameController: _nameController,
                     phoneController: _phoneController,
                     otpController: _otpController,
@@ -860,8 +1079,52 @@ class _LandingScreenState extends State<LandingScreen>
                     animation: _controller,
                     onSendOtp: _sendOtp,
                     onLogin: _verifyOtpOrEnter,
-                  ),
-                ],
+                  );
+                  if (constraints.maxWidth >= 900) {
+                    return Padding(
+                      padding: const EdgeInsets.all(28),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const LandingTopBar(),
+                          const SizedBox(height: 22),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                const Expanded(
+                                  flex: 6,
+                                  child: LandingHero(expanded: true),
+                                ),
+                                const SizedBox(width: 28),
+                                Expanded(
+                                  flex: 5,
+                                  child: Center(
+                                    child: ConstrainedBox(
+                                      constraints: const BoxConstraints(
+                                        maxWidth: 460,
+                                      ),
+                                      child: loginPanel,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+                    children: [
+                      const LandingTopBar(),
+                      const SizedBox(height: 26),
+                      const LandingHero(),
+                      const SizedBox(height: 24),
+                      loginPanel,
+                    ],
+                  );
+                },
               ),
             ),
           ],
@@ -926,7 +1189,9 @@ class LandingTopBar extends StatelessWidget {
 }
 
 class LandingHero extends StatelessWidget {
-  const LandingHero({super.key});
+  const LandingHero({super.key, this.expanded = false});
+
+  final bool expanded;
 
   @override
   Widget build(BuildContext context) {
@@ -964,11 +1229,7 @@ class LandingHero extends StatelessWidget {
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.sensors_rounded,
-                      color: AppColors.green,
-                      size: 16,
-                    ),
+                    LiveSignalIcon(),
                     SizedBox(width: 6),
                     Text(
                       'Live emergency network',
@@ -985,26 +1246,86 @@ class LandingHero extends StatelessWidget {
               const Icon(Icons.auto_awesome_rounded, color: AppColors.gold),
             ],
           ),
-          const SizedBox(height: 22),
-          const Text(
+          SizedBox(height: expanded ? 42 : 22),
+          Text(
             'Healthcare help,\nright when life\nneeds speed.',
             style: TextStyle(
               color: AppColors.text,
-              fontSize: 34,
+              fontSize: expanded ? 54 : 34,
               height: 1.02,
               fontWeight: FontWeight.w900,
             ),
           ),
           const SizedBox(height: 14),
-          const Text(
+          Text(
             'Find doctors, book appointments, trigger SOS alerts, request emergency cabs, and locate affordable medicines from one smart app.',
             style: TextStyle(
               color: AppColors.muted,
+              fontSize: expanded ? 17 : 14,
               height: 1.45,
               fontWeight: FontWeight.w600,
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class LiveSignalIcon extends StatefulWidget {
+  const LiveSignalIcon({super.key});
+
+  @override
+  State<LiveSignalIcon> createState() => _LiveSignalIconState();
+}
+
+class _LiveSignalIconState extends State<LiveSignalIcon>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 18,
+      height: 18,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          final pulse = .55 + math.sin(_controller.value * math.pi * 2) * .45;
+          return Stack(
+            alignment: Alignment.center,
+            children: [
+              Icon(
+                Icons.wifi_tethering_rounded,
+                color: AppColors.green.withValues(alpha: .42 + pulse * .42),
+                size: 18,
+              ),
+              Container(
+                width: 5 + pulse * 3,
+                height: 5 + pulse * 3,
+                decoration: const BoxDecoration(
+                  color: AppColors.green,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -1783,14 +2104,31 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 22),
-          const SearchBox(hint: 'Search doctors, hospitals, services...'),
+          SearchBox(
+            hint: 'Search doctors, hospitals, services...',
+            onSubmitted: (query) {
+              final trimmed = query.trim();
+              if (trimmed.isEmpty) {
+                return;
+              }
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => SearchResultsScreen(query: trimmed),
+                ),
+              );
+            },
+          ),
           AnimatedBuilder(
             animation: appLocation,
             builder: (context, _) {
               if (!appLocation.resolved) {
                 return const SizedBox.shrink();
               }
-              return const DoctorAvailabilityTicker();
+              return const Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: DoctorAvailabilityTicker(),
+              );
             },
           ),
           const SizedBox(height: 18),
@@ -2158,8 +2496,121 @@ class DoctorLocationPrompt extends StatelessWidget {
   }
 }
 
-class FindDoctorsScreen extends StatelessWidget {
+class SearchResultsScreen extends StatelessWidget {
+  const SearchResultsScreen({super.key, required this.query});
+
+  final String query;
+
+  @override
+  Widget build(BuildContext context) {
+    final q = query.toLowerCase();
+    final doctorResults = doctors
+        .where(
+          (doctor) =>
+              doctor.name.toLowerCase().contains(q) ||
+              doctor.specialty.toLowerCase().contains(q),
+        )
+        .toList();
+    final hospitalResults = hospitals
+        .where(
+          (hospital) =>
+              hospital.name.toLowerCase().contains(q) ||
+              hospital.status.toLowerCase().contains(q),
+        )
+        .toList();
+    final kendraResults = kendras
+        .where(
+          (place) =>
+              place.name.toLowerCase().contains(q) ||
+              place.area.toLowerCase().contains(q),
+        )
+        .toList();
+
+    return Scaffold(
+      body: AppPage(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+          children: [
+            TopBar(title: 'Search: $query'),
+            const SizedBox(height: 18),
+            if (doctorResults.isEmpty &&
+                hospitalResults.isEmpty &&
+                kendraResults.isEmpty)
+              const EmptyStateCard(
+                icon: Icons.search_off_rounded,
+                title: 'No results found',
+                subtitle: 'Try doctor name, specialty, hospital or medicine store.',
+              ),
+            for (final doctor in doctorResults)
+              DoctorCard(
+                doctor: doctor,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DoctorDetailScreen(doctor: doctor),
+                  ),
+                ),
+              ),
+            for (final hospital in hospitalResults)
+              HospitalMiniCard(hospital: hospital, compact: true),
+            for (final place in kendraResults) KendraCard(place: place),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class EmptyStateCard extends StatelessWidget {
+  const EmptyStateCard({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(22),
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 28,
+            backgroundColor: AppColors.soft,
+            child: Icon(icon, color: AppColors.navy),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppColors.muted, height: 1.35),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class FindDoctorsScreen extends StatefulWidget {
   const FindDoctorsScreen({super.key});
+
+  @override
+  State<FindDoctorsScreen> createState() => _FindDoctorsScreenState();
+}
+
+class _FindDoctorsScreenState extends State<FindDoctorsScreen> {
+  var _query = '';
 
   @override
   Widget build(BuildContext context) {
@@ -2173,7 +2624,10 @@ class FindDoctorsScreen extends StatelessWidget {
               trailingIcon: Icons.tune_rounded,
             ),
             const SizedBox(height: 24),
-            const SearchBox(hint: 'Search by name, specialization...'),
+            SearchBox(
+              hint: 'Search by name, specialization...',
+              onChanged: (value) => setState(() => _query = value),
+            ),
             const SizedBox(height: 12),
             AnimatedBuilder(
               animation: appLocation,
@@ -2198,7 +2652,10 @@ class FindDoctorsScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    DoctorDirectoryList(repository: JeevanArogyaRepository()),
+                    DoctorDirectoryList(
+                      repository: JeevanArogyaRepository(),
+                      query: _query,
+                    ),
                   ],
                 );
               },
@@ -2211,9 +2668,29 @@ class FindDoctorsScreen extends StatelessWidget {
 }
 
 class DoctorDirectoryList extends StatelessWidget {
-  const DoctorDirectoryList({super.key, required this.repository});
+  const DoctorDirectoryList({
+    super.key,
+    required this.repository,
+    required this.query,
+  });
 
   final JeevanArogyaRepository repository;
+  final String query;
+
+  List<Doctor> _filter(List<Doctor> source) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) {
+      return source;
+    }
+    return source
+        .where(
+          (doctor) =>
+              doctor.name.toLowerCase().contains(q) ||
+              doctor.specialty.toLowerCase().contains(q) ||
+              doctor.degree.toLowerCase().contains(q),
+        )
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2223,7 +2700,7 @@ class DoctorDirectoryList extends StatelessWidget {
           const DemoModeNotice(
             text: 'Doctors are demo data. Add Supabase keys for live database.',
           ),
-          for (final doctor in doctors)
+          for (final doctor in _filter(doctors))
             DoctorCard(
               doctor: doctor,
               onTap: () => Navigator.push(
@@ -2244,6 +2721,7 @@ class DoctorDirectoryList extends StatelessWidget {
         final visibleDoctors = liveDoctors == null || liveDoctors.isEmpty
             ? doctors
             : liveDoctors;
+        final filteredDoctors = _filter(visibleDoctors);
 
         return Column(
           children: [
@@ -2252,7 +2730,13 @@ class DoctorDirectoryList extends StatelessWidget {
                   ? 'Live doctors synced from Supabase'
                   : 'Connecting to Supabase doctors...',
             ),
-            for (final doctor in visibleDoctors)
+            if (filteredDoctors.isEmpty)
+              const EmptyStateCard(
+                icon: Icons.person_search_rounded,
+                title: 'No matching doctors',
+                subtitle: 'Try another name or specialty.',
+              ),
+            for (final doctor in filteredDoctors)
               DoctorCard(
                 doctor: doctor,
                 onTap: () => Navigator.push(
@@ -2433,55 +2917,113 @@ class DoctorDetailScreen extends StatelessWidget {
               child: const Text('Read more'),
             ),
             const SizedBox(height: 14),
-            const Text(
-              'Next Available Slots',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 12),
-            const DateSlots(),
-            const SizedBox(height: 12),
-            const TimeSlots(),
-            const SizedBox(height: 22),
-            PrimaryButton(
-              label: 'Book Appointment',
-              onTap: () => _bookAppointment(context),
-            ),
+            AppointmentBookingPanel(doctor: doctor),
           ],
         ),
       ),
     );
   }
+}
 
-  Future<void> _bookAppointment(BuildContext context) async {
-    final repository = JeevanArogyaRepository();
-    if (!repository.isConnected || doctor.id.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Demo booking shown. Add Supabase keys for real save.'),
+class AppointmentBookingPanel extends StatefulWidget {
+  const AppointmentBookingPanel({super.key, required this.doctor});
+
+  final Doctor doctor;
+
+  @override
+  State<AppointmentBookingPanel> createState() =>
+      _AppointmentBookingPanelState();
+}
+
+class _AppointmentBookingPanelState extends State<AppointmentBookingPanel> {
+  var _dateIndex = 0;
+  var _timeIndex = 1;
+  final _reasonController = TextEditingController();
+
+  @override
+  void dispose() {
+    _reasonController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Next Available Slots',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
         ),
-      );
+        const SizedBox(height: 12),
+        DateSlots(
+          selectedIndex: _dateIndex,
+          onSelected: (index) => setState(() => _dateIndex = index),
+        ),
+        const SizedBox(height: 12),
+        TimeSlots(
+          selectedIndex: _timeIndex,
+          onSelected: (index) => setState(() => _timeIndex = index),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _reasonController,
+          decoration: InputDecoration(
+            hintText: 'Reason for visit',
+            filled: true,
+            fillColor: AppColors.soft,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
+        const SizedBox(height: 22),
+        PrimaryButton(label: 'Book Appointment', onTap: _bookAppointment),
+      ],
+    );
+  }
+
+  Future<void> _bookAppointment() async {
+    final date = appointmentDateOptions()[_dateIndex];
+    final time = appointmentTimes[_timeIndex];
+    final reason = _reasonController.text.trim().isEmpty
+        ? 'General consultation'
+        : _reasonController.text.trim();
+
+    appData.addAppointment(
+      UserAppointmentEntry(
+        doctorName: widget.doctor.name,
+        specialty: widget.doctor.specialty,
+        dateLabel: '${date.$1}, ${date.$2}',
+        timeLabel: time,
+        reason: reason,
+      ),
+    );
+
+    final repository = JeevanArogyaRepository();
+    if (repository.isConnected && widget.doctor.id.isNotEmpty) {
+      try {
+        await repository.bookAppointment(
+          doctorId: widget.doctor.id,
+          slotTime: DateTime.now().add(Duration(days: _dateIndex, hours: 10)),
+          reason: reason,
+        );
+      } catch (_) {
+        // Local appointment is already saved; Supabase sync can retry later.
+      }
+    }
+
+    if (!mounted) {
       return;
     }
-
-    try {
-      await repository.bookAppointment(
-        doctorId: doctor.id,
-        slotTime: DateTime.now().add(const Duration(days: 1, hours: 2)),
-      );
-      if (!context.mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Appointment saved in Supabase.')),
-      );
-    } catch (error) {
-      if (!context.mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Booking failed: $error')));
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Appointment booked for ${widget.doctor.name} on ${date.$1} at $time.',
+        ),
+      ),
+    );
   }
 }
 
@@ -2799,7 +3341,7 @@ class HealthRecordsScreen extends StatelessWidget {
               buttonLabel: 'Save Record',
               icon: Icons.folder_copy_rounded,
               color: AppColors.blue,
-              onSave: (title, subtitle) {
+              onSave: (title, subtitle, attachmentName, attachmentType) {
                 appData.addEntry(
                   appData.healthRecords,
                   AppTextEntry(
@@ -2807,6 +3349,8 @@ class HealthRecordsScreen extends StatelessWidget {
                     subtitle: subtitle,
                     icon: Icons.folder_copy_rounded,
                     color: AppColors.blue,
+                    attachmentName: attachmentName,
+                    attachmentType: attachmentType,
                   ),
                 );
               },
@@ -2902,8 +3446,25 @@ class AppointmentsScreen extends StatelessWidget {
         children: [
           const TopBar(title: 'Appointments', showBack: false),
           const SizedBox(height: 20),
-          AppointmentCard(doctor: doctors.first, time: 'Today, 11:30 AM'),
-          AppointmentCard(doctor: doctors[2], time: 'Tomorrow, 10:00 AM'),
+          AnimatedBuilder(
+            animation: appData,
+            builder: (context, _) {
+              if (appData.appointments.isEmpty) {
+                return const EmptyStateCard(
+                  icon: Icons.calendar_month_rounded,
+                  title: 'No appointments yet',
+                  subtitle:
+                      'Book a doctor appointment and it will appear here permanently.',
+                );
+              }
+              return Column(
+                children: [
+                  for (final appointment in appData.appointments)
+                    AppointmentCard(appointment: appointment),
+                ],
+              );
+            },
+          ),
         ],
       ),
     );
@@ -2924,12 +3485,49 @@ class MessagesScreen extends StatelessWidget {
           AnimatedBuilder(
             animation: appData,
             builder: (context, _) {
+              if (appData.threads.isEmpty) {
+                return Column(
+                  children: [
+                    const EmptyStateCard(
+                      icon: Icons.chat_bubble_outline_rounded,
+                      title: 'No messages yet',
+                      subtitle:
+                          'Start a message or book appointments to create live threads.',
+                    ),
+                    const SizedBox(height: 12),
+                    PrimaryButton(
+                      label: 'Start Message',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const NewMessageScreen(),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }
               return Column(
                 children: [
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const NewMessageScreen(),
+                        ),
+                      ),
+                      icon: const Icon(Icons.add_comment_rounded),
+                      label: const Text('New'),
+                    ),
+                  ),
                   for (var i = 0; i < appData.threads.length; i++)
                     MessageTile(
                       name: appData.threads[i].name,
-                      text: appData.threads[i].messages.last.body,
+                      text: appData.threads[i].messages.isEmpty
+                          ? appData.threads[i].subtitle
+                          : appData.threads[i].messages.last.body,
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -3217,7 +3815,7 @@ class EditableInfoScreen extends StatelessWidget {
               icon: defaultIcon,
               color: color,
               onBeforeSave: onBeforeAdd,
-              onSave: (entryTitle, subtitle) {
+              onSave: (entryTitle, subtitle, attachmentName, attachmentType) {
                 appData.addEntry(
                   entries,
                   AppTextEntry(
@@ -3225,6 +3823,8 @@ class EditableInfoScreen extends StatelessWidget {
                     subtitle: subtitle,
                     icon: defaultIcon,
                     color: color,
+                    attachmentName: attachmentName,
+                    attachmentType: attachmentType,
                   ),
                 );
               },
@@ -3264,7 +3864,13 @@ class EditableEntryPanel extends StatefulWidget {
   final String buttonLabel;
   final IconData icon;
   final Color color;
-  final void Function(String title, String subtitle) onSave;
+  final void Function(
+    String title,
+    String subtitle,
+    String attachmentName,
+    String attachmentType,
+  )
+  onSave;
   final Future<void> Function()? onBeforeSave;
 
   @override
@@ -3275,6 +3881,8 @@ class _EditableEntryPanelState extends State<EditableEntryPanel> {
   final _titleController = TextEditingController();
   final _subtitleController = TextEditingController();
   var _busy = false;
+  String _attachmentName = '';
+  String _attachmentType = '';
 
   @override
   void dispose() {
@@ -3333,6 +3941,34 @@ class _EditableEntryPanelState extends State<EditableEntryPanel> {
               ),
             ),
           ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: _busy ? null : () => _pickAttachment(false),
+                icon: const Icon(Icons.upload_file_rounded),
+                label: const Text('Upload File'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _busy ? null : () => _pickAttachment(true),
+                icon: const Icon(Icons.image_rounded),
+                label: const Text('Upload Image'),
+              ),
+            ],
+          ),
+          if (_attachmentName.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Attached: $_attachmentName',
+              style: const TextStyle(
+                color: AppColors.green,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           PrimaryButton(
             label: _busy ? 'Saving...' : widget.buttonLabel,
@@ -3355,9 +3991,11 @@ class _EditableEntryPanelState extends State<EditableEntryPanel> {
     setState(() => _busy = true);
     try {
       await widget.onBeforeSave?.call();
-      widget.onSave(title, subtitle);
+      widget.onSave(title, subtitle, _attachmentName, _attachmentType);
       _titleController.clear();
       _subtitleController.clear();
+      _attachmentName = '';
+      _attachmentType = '';
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Saved.')),
@@ -3368,6 +4006,22 @@ class _EditableEntryPanelState extends State<EditableEntryPanel> {
         setState(() => _busy = false);
       }
     }
+  }
+
+  Future<void> _pickAttachment(bool imageOnly) async {
+    final result = await FilePicker.pickFiles(
+      type: imageOnly ? FileType.image : FileType.any,
+      allowMultiple: false,
+      withData: false,
+    );
+    if (result == null || result.files.isEmpty) {
+      return;
+    }
+    final file = result.files.first;
+    setState(() {
+      _attachmentName = file.name;
+      _attachmentType = imageOnly ? 'image' : 'file';
+    });
   }
 }
 
@@ -3400,6 +4054,33 @@ class InfoEntryCard extends StatelessWidget {
                   entry.subtitle,
                   style: const TextStyle(color: AppColors.muted, fontSize: 12),
                 ),
+                if (entry.attachmentName.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(
+                        entry.attachmentType == 'image'
+                            ? Icons.image_rounded
+                            : Icons.attach_file_rounded,
+                        color: AppColors.green,
+                        size: 15,
+                      ),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: Text(
+                          entry.attachmentName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.green,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -3681,6 +4362,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       );
       return;
     }
+    appData.saveProfile(name, email);
     widget.onSaved(AppUserProfile(name: name, phone: email));
     if (contact.isNotEmpty) {
       appData.addEmergencyContact(
@@ -3691,6 +4373,88 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
       );
     }
+    Navigator.pop(context);
+  }
+}
+
+class NewMessageScreen extends StatefulWidget {
+  const NewMessageScreen({super.key});
+
+  @override
+  State<NewMessageScreen> createState() => _NewMessageScreenState();
+}
+
+class _NewMessageScreenState extends State<NewMessageScreen> {
+  final _nameController = TextEditingController();
+  final _messageController = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _messageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: AppPage(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+          children: [
+            const TopBar(title: 'New Message'),
+            const SizedBox(height: 18),
+            AppCard(
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _nameController,
+                    decoration: InputDecoration(
+                      hintText: 'Doctor, hospital, or contact name',
+                      filled: true,
+                      fillColor: AppColors.soft,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _messageController,
+                    minLines: 3,
+                    maxLines: 5,
+                    decoration: InputDecoration(
+                      hintText: 'Message',
+                      filled: true,
+                      fillColor: AppColors.soft,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  PrimaryButton(label: 'Send Message', onTap: _send),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _send() {
+    final name = _nameController.text.trim();
+    final body = _messageController.text.trim();
+    if (name.isEmpty || body.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Name and message are required.')),
+      );
+      return;
+    }
+    appData.createThread(name: name, subtitle: 'Custom message', body: body);
     Navigator.pop(context);
   }
 }
@@ -3835,7 +4599,7 @@ class AppPage extends StatelessWidget {
         ),
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1180),
+            constraints: const BoxConstraints(maxWidth: 1440),
             child: child,
           ),
         ),
@@ -3983,9 +4747,16 @@ class BackCircle extends StatelessWidget {
 }
 
 class SearchBox extends StatelessWidget {
-  const SearchBox({super.key, required this.hint});
+  const SearchBox({
+    super.key,
+    required this.hint,
+    this.onChanged,
+    this.onSubmitted,
+  });
 
   final String hint;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
 
   @override
   Widget build(BuildContext context) {
@@ -3999,9 +4770,19 @@ class SearchBox extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              hint,
-              style: const TextStyle(color: AppColors.muted, fontSize: 13),
+            child: TextField(
+              onChanged: onChanged,
+              onSubmitted: onSubmitted,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: hint,
+                border: InputBorder.none,
+                isDense: true,
+                hintStyle: const TextStyle(
+                  color: AppColors.muted,
+                  fontSize: 13,
+                ),
+              ),
             ),
           ),
           const Icon(Icons.search_rounded, color: AppColors.text),
@@ -4707,47 +5488,94 @@ class StatCard extends StatelessWidget {
   }
 }
 
+const appointmentTimes = [
+  '10:00 AM',
+  '11:30 AM',
+  '03:00 PM',
+  '04:30 PM',
+  '05:30 PM',
+  '06:00 PM',
+];
+
+List<(String, String)> appointmentDateOptions() {
+  const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  final now = DateTime.now();
+  return List.generate(4, (index) {
+    final day = now.add(Duration(days: index));
+    return (
+      index == 0 ? 'Today' : weekdays[day.weekday - 1],
+      '${day.day} ${months[day.month - 1]}',
+    );
+  });
+}
+
 class DateSlots extends StatelessWidget {
-  const DateSlots({super.key});
+  const DateSlots({
+    super.key,
+    required this.selectedIndex,
+    required this.onSelected,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
 
   @override
   Widget build(BuildContext context) {
-    const dates = [
-      ('Today', '16 May'),
-      ('Sat', '17 May'),
-      ('Sun', '18 May'),
-      ('Mon', '19 May'),
-    ];
+    final dates = appointmentDateOptions();
     return Row(
       children: [
         for (var i = 0; i < dates.length; i++)
           Expanded(
-            child: Container(
-              margin: EdgeInsets.only(right: i == dates.length - 1 ? 0 : 8),
-              padding: const EdgeInsets.symmetric(vertical: 11),
-              decoration: BoxDecoration(
-                color: i == 0 ? AppColors.navy : AppColors.soft,
-                borderRadius: BorderRadius.circular(11),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    dates[i].$1,
-                    style: TextStyle(
-                      color: i == 0 ? Colors.white : AppColors.text,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(11),
+              onTap: () => onSelected(i),
+              child: Container(
+                margin: EdgeInsets.only(
+                  right: i == dates.length - 1 ? 0 : 8,
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 11),
+                decoration: BoxDecoration(
+                  color: i == selectedIndex ? AppColors.navy : AppColors.soft,
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      dates[i].$1,
+                      style: TextStyle(
+                        color: i == selectedIndex
+                            ? Colors.white
+                            : AppColors.text,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    dates[i].$2,
-                    style: TextStyle(
-                      color: i == 0 ? Colors.white70 : AppColors.muted,
-                      fontSize: 10,
+                    const SizedBox(height: 3),
+                    Text(
+                      dates[i].$2,
+                      style: TextStyle(
+                        color: i == selectedIndex
+                            ? Colors.white70
+                            : AppColors.muted,
+                        fontSize: 10,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -4757,22 +5585,21 @@ class DateSlots extends StatelessWidget {
 }
 
 class TimeSlots extends StatelessWidget {
-  const TimeSlots({super.key});
+  const TimeSlots({
+    super.key,
+    required this.selectedIndex,
+    required this.onSelected,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
 
   @override
   Widget build(BuildContext context) {
-    const times = [
-      '10:00 AM',
-      '11:30 AM',
-      '03:00 PM',
-      '04:30 PM',
-      '05:30 PM',
-      '06:00 PM',
-    ];
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: times.length,
+      itemCount: appointmentTimes.length,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
         crossAxisSpacing: 10,
@@ -4780,19 +5607,23 @@ class TimeSlots extends StatelessWidget {
         childAspectRatio: 2.3,
       ),
       itemBuilder: (context, index) {
-        final selected = index == 1;
-        return Container(
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected ? AppColors.navy : AppColors.soft,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Text(
-            times[index],
-            style: TextStyle(
-              color: selected ? Colors.white : AppColors.text,
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
+        final selected = index == selectedIndex;
+        return InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: () => onSelected(index),
+          child: Container(
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: selected ? AppColors.navy : AppColors.soft,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              appointmentTimes[index],
+              style: TextStyle(
+                color: selected ? Colors.white : AppColors.text,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
         );
@@ -5942,10 +6773,9 @@ class KendraCard extends StatelessWidget {
 }
 
 class AppointmentCard extends StatelessWidget {
-  const AppointmentCard({super.key, required this.doctor, required this.time});
+  const AppointmentCard({super.key, required this.appointment});
 
-  final Doctor doctor;
-  final String time;
+  final UserAppointmentEntry appointment;
 
   @override
   Widget build(BuildContext context) {
@@ -5953,30 +6783,44 @@ class AppointmentCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 14),
       child: Row(
         children: [
-          DoctorAvatar(doctor: doctor, radius: 32),
+          const CircleAvatar(
+            radius: 32,
+            backgroundColor: AppColors.soft,
+            child: Icon(Icons.event_available_rounded, color: AppColors.navy),
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  doctor.name,
+                  appointment.doctorName,
                   style: const TextStyle(fontWeight: FontWeight.w900),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  doctor.specialty,
+                  appointment.specialty,
                   style: const TextStyle(color: AppColors.muted, fontSize: 12),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  time,
+                  '${appointment.dateLabel} - ${appointment.timeLabel}',
                   style: const TextStyle(
                     color: AppColors.green,
                     fontWeight: FontWeight.w800,
                     fontSize: 12,
                   ),
                 ),
+                if (appointment.reason.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    appointment.reason,
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

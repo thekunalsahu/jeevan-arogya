@@ -41,6 +41,8 @@ dependencies:
   geolocator: ^14.0.2
   url_launcher: ^6.3.2
   http: ^1.6.0
+  shared_preferences: ^2.5.5
+  file_picker: ^11.0.2
 
 dev_dependencies:
   flutter_test:
