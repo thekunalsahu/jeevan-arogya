@@ -361,6 +361,15 @@ String formatDistanceKm(double km) {
   return '${km.toStringAsFixed(1)} km away';
 }
 
+String friendlyAuthError(Object error) {
+  final text = error.toString().replaceFirst('AuthException(message: ', '');
+  if (text.toLowerCase().contains('sms') ||
+      text.toLowerCase().contains('twilio')) {
+    return '$text Check Supabase Auth > Phone provider/Twilio settings.';
+  }
+  return text;
+}
+
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
 
@@ -428,21 +437,12 @@ class LandingScreen extends StatefulWidget {
 class _LandingScreenState extends State<LandingScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
-  final TextEditingController _phoneController = TextEditingController(
-    text: '+91 98765 43210',
-  );
+  final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _otpController = TextEditingController();
   var _otpSent = false;
   var _otp = '4  8  2  1';
   var _authBusy = false;
   String? _authMessage;
-
-  void _activateDemoOtp(String reason) {
-    _otpSent = true;
-    _otp = '4  8  2  1';
-    _otpController.text = '4821';
-    _authMessage = '$reason Demo OTP: 4821';
-  }
 
   @override
   void initState() {
@@ -462,6 +462,14 @@ class _LandingScreenState extends State<LandingScreen>
   }
 
   Future<void> _sendOtp() async {
+    final phone = _phoneController.text.trim();
+    if (phone.isEmpty || phone.replaceAll(RegExp(r'\D'), '').length < 10) {
+      setState(() {
+        _authMessage = 'Please enter a valid mobile number.';
+      });
+      return;
+    }
+
     setState(() {
       _authBusy = true;
       _authMessage = null;
@@ -469,11 +477,12 @@ class _LandingScreenState extends State<LandingScreen>
 
     try {
       if (widget.repository.isConnected) {
-        await widget.repository.sendPhoneOtp(_phoneController.text);
+        final normalizedPhone = await widget.repository.sendPhoneOtp(phone);
         setState(() {
           _otpSent = true;
-          _authMessage = 'OTP sent from Supabase. Enter the SMS code.';
+          _authMessage = 'OTP sent to $normalizedPhone. Enter the SMS code.';
           _otp = '';
+          _otpController.clear();
         });
       } else {
         setState(() {
@@ -485,7 +494,7 @@ class _LandingScreenState extends State<LandingScreen>
       }
     } catch (error) {
       setState(() {
-        _activateDemoOtp('Supabase phone OTP is not ready yet.');
+        _authMessage = 'OTP send failed: ${friendlyAuthError(error)}';
       });
     } finally {
       if (mounted) {
@@ -503,8 +512,10 @@ class _LandingScreenState extends State<LandingScreen>
     try {
       if (widget.repository.isConnected && _otpSent) {
         final token = _otpController.text.replaceAll(RegExp(r'\s+'), '');
-        if (token == '4821') {
-          widget.onLogin();
+        if (token.length < 4) {
+          setState(() {
+            _authMessage = 'Please enter the SMS OTP.';
+          });
           return;
         }
 
@@ -523,16 +534,19 @@ class _LandingScreenState extends State<LandingScreen>
         }
         widget.onLogin();
       } else {
-        widget.onLogin();
+        final token = _otpController.text.replaceAll(RegExp(r'\s+'), '');
+        if (!_otpSent || token == '4821') {
+          widget.onLogin();
+        } else {
+          setState(() {
+            _authMessage = 'Use demo OTP 4821 in demo mode.';
+          });
+        }
       }
     } catch (error) {
-      if (_otpController.text.replaceAll(RegExp(r'\s+'), '') == '4821') {
-        widget.onLogin();
-      } else {
-        setState(() {
-          _authMessage = 'OTP verify failed. Use Supabase SMS code or 4821.';
-        });
-      }
+      setState(() {
+        _authMessage = 'OTP verify failed: ${friendlyAuthError(error)}';
+      });
     } finally {
       if (mounted) {
         setState(() => _authBusy = false);
@@ -839,7 +853,7 @@ class LoginPanel extends StatelessWidget {
                         color: AppColors.blue,
                       ),
                       prefixText: '+91  ',
-                      hintText: 'Mobile number',
+                      hintText: '98765 43210',
                       hintStyle: const TextStyle(
                         color: AppColors.muted,
                         fontWeight: FontWeight.w700,

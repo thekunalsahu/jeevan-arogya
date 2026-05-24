@@ -29,9 +29,11 @@ class JeevanArogyaRepository {
     );
   }
 
-  Future<void> sendPhoneOtp(String phone) async {
+  Future<String> sendPhoneOtp(String phone) async {
     final client = _requireClient();
-    await client.auth.signInWithOtp(phone: _normalizePhone(phone));
+    final normalizedPhone = _normalizePhone(phone);
+    await client.auth.signInWithOtp(phone: normalizedPhone);
+    return normalizedPhone;
   }
 
   Future<void> verifyPhoneOtp({
@@ -211,10 +213,14 @@ class JeevanArogyaRepository {
   }
 
   String _normalizePhone(String phone) {
-    final compact = phone.replaceAll(RegExp(r'\s+'), '');
-    if (compact.startsWith('+')) {
-      return compact;
+    final trimmed = phone.trim();
+    final digits = trimmed.replaceAll(RegExp(r'\D'), '');
+    if (trimmed.startsWith('+')) {
+      return '+$digits';
     }
-    return '+91$compact';
+    if (digits.startsWith('91') && digits.length == 12) {
+      return '+$digits';
+    }
+    return '+91$digits';
   }
 }
