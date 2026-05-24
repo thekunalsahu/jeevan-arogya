@@ -1005,7 +1005,7 @@ const liveOperationsEvents = [
     area: 'Family profile',
     status: 'Delivered',
     eta: 'Now',
-    actor: 'Priya Sharma',
+    actor: 'Verified user',
     icon: Icons.family_restroom_rounded,
     color: Color(0xFF079C66),
   ),

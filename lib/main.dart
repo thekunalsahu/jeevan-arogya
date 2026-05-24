@@ -6,6 +6,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show User;
 import 'package:url_launcher/url_launcher.dart';
 
 import 'supabase_config.dart';
@@ -370,6 +371,41 @@ String friendlyAuthError(Object error) {
   return text;
 }
 
+class AppUserProfile {
+  const AppUserProfile({required this.name, required this.phone});
+
+  final String name;
+  final String phone;
+
+  String get firstName {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      return 'User';
+    }
+    return trimmed.split(RegExp(r'\s+')).first;
+  }
+
+  String get initial {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      return 'U';
+    }
+    return trimmed.substring(0, 1).toUpperCase();
+  }
+
+  static AppUserProfile fromUser(User? user) {
+    final metadata = user?.userMetadata ?? {};
+    final name = (metadata['full_name'] ?? metadata['name'] ?? '')
+        .toString()
+        .trim();
+    final phone = (user?.phone ?? metadata['phone'] ?? '').toString().trim();
+    return AppUserProfile(
+      name: name.isEmpty ? 'User' : name,
+      phone: phone.isEmpty ? 'Mobile number verified' : phone,
+    );
+  }
+}
+
 class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
 
@@ -381,6 +417,9 @@ class _AuthGateState extends State<AuthGate> {
   final JeevanArogyaRepository _repository = JeevanArogyaRepository();
   StreamSubscription? _authSubscription;
   late bool _loggedIn = _repository.currentUser != null;
+  late AppUserProfile _profile = AppUserProfile.fromUser(
+    _repository.currentUser,
+  );
 
   @override
   void initState() {
@@ -389,7 +428,12 @@ class _AuthGateState extends State<AuthGate> {
       if (!mounted) {
         return;
       }
-      setState(() => _loggedIn = state.session != null);
+      setState(() {
+        _loggedIn = state.session != null;
+        if (state.session?.user != null) {
+          _profile = AppUserProfile.fromUser(state.session!.user);
+        }
+      });
     });
   }
 
@@ -399,8 +443,19 @@ class _AuthGateState extends State<AuthGate> {
     super.dispose();
   }
 
-  void _enterDemo() {
-    setState(() => _loggedIn = true);
+  void _enterApp(AppUserProfile profile) {
+    setState(() {
+      _profile = profile;
+      _loggedIn = true;
+    });
+  }
+
+  Future<void> _logout() async {
+    await _repository.signOut();
+    if (!mounted) {
+      return;
+    }
+    setState(() => _loggedIn = false);
   }
 
   @override
@@ -410,11 +465,15 @@ class _AuthGateState extends State<AuthGate> {
       switchInCurve: Curves.easeOutCubic,
       switchOutCurve: Curves.easeInCubic,
       child: _loggedIn
-          ? const AppShell(key: ValueKey('app-shell'))
+          ? AppShell(
+              key: const ValueKey('app-shell'),
+              profile: _profile,
+              onLogout: _logout,
+            )
           : LandingScreen(
               key: const ValueKey('landing-screen'),
               repository: _repository,
-              onLogin: _enterDemo,
+              onLogin: _enterApp,
             ),
     );
   }
@@ -428,7 +487,7 @@ class LandingScreen extends StatefulWidget {
   });
 
   final JeevanArogyaRepository repository;
-  final VoidCallback onLogin;
+  final ValueChanged<AppUserProfile> onLogin;
 
   @override
   State<LandingScreen> createState() => _LandingScreenState();
@@ -437,6 +496,7 @@ class LandingScreen extends StatefulWidget {
 class _LandingScreenState extends State<LandingScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _otpController = TextEditingController();
   var _otpSent = false;
@@ -456,13 +516,21 @@ class _LandingScreenState extends State<LandingScreen>
   @override
   void dispose() {
     _controller.dispose();
+    _nameController.dispose();
     _phoneController.dispose();
     _otpController.dispose();
     super.dispose();
   }
 
   Future<void> _sendOtp() async {
+    final name = _nameController.text.trim();
     final phone = _phoneController.text.trim();
+    if (name.length < 2) {
+      setState(() {
+        _authMessage = 'Please enter your name.';
+      });
+      return;
+    }
     if (phone.isEmpty || phone.replaceAll(RegExp(r'\D'), '').length < 10) {
       setState(() {
         _authMessage = 'Please enter a valid mobile number.';
@@ -477,7 +545,10 @@ class _LandingScreenState extends State<LandingScreen>
 
     try {
       if (widget.repository.isConnected) {
-        final normalizedPhone = await widget.repository.sendPhoneOtp(phone);
+        final normalizedPhone = await widget.repository.sendPhoneOtp(
+          phone: phone,
+          fullName: name,
+        );
         setState(() {
           _otpSent = true;
           _authMessage = 'OTP sent to $normalizedPhone. Enter the SMS code.';
@@ -486,10 +557,11 @@ class _LandingScreenState extends State<LandingScreen>
         });
       } else {
         setState(() {
-          _otpSent = true;
-          _otp = '4  8  2  1';
-          _otpController.text = '4821';
-          _authMessage = 'Demo mode: add Supabase keys in .env for real OTP.';
+          _otpSent = false;
+          _otp = '';
+          _otpController.clear();
+          _authMessage =
+              'OTP service is not configured on this build. Add Supabase keys.';
         });
       }
     } catch (error) {
@@ -523,25 +595,24 @@ class _LandingScreenState extends State<LandingScreen>
           phone: _phoneController.text,
           token: token,
         );
+        final profile = AppUserProfile(
+          name: _nameController.text.trim(),
+          phone: widget.repository.normalizePhone(_phoneController.text),
+        );
         try {
           await widget.repository.upsertProfile(
-            fullName: 'Priya Sharma',
-            phone: _phoneController.text,
-            email: 'priya.sharma@email.com',
+            fullName: profile.name,
+            phone: profile.phone,
           );
         } catch (_) {
           // Auth succeeded; profile sync can be retried after database setup.
         }
-        widget.onLogin();
+        widget.onLogin(profile);
       } else {
-        final token = _otpController.text.replaceAll(RegExp(r'\s+'), '');
-        if (!_otpSent || token == '4821') {
-          widget.onLogin();
-        } else {
-          setState(() {
-            _authMessage = 'Use demo OTP 4821 in demo mode.';
-          });
-        }
+        setState(() {
+          _authMessage =
+              'OTP service is not configured on this build. Add Supabase keys.';
+        });
       }
     } catch (error) {
       setState(() {
@@ -578,6 +649,7 @@ class _LandingScreenState extends State<LandingScreen>
                   const LandingHero(),
                   const SizedBox(height: 24),
                   LoginPanel(
+                    nameController: _nameController,
                     phoneController: _phoneController,
                     otpController: _otpController,
                     otpSent: _otpSent,
@@ -588,7 +660,6 @@ class _LandingScreenState extends State<LandingScreen>
                     animation: _controller,
                     onSendOtp: _sendOtp,
                     onLogin: _verifyOtpOrEnter,
-                    onDemoLogin: widget.onLogin,
                   ),
                 ],
               ),
@@ -742,6 +813,7 @@ class LandingHero extends StatelessWidget {
 class LoginPanel extends StatelessWidget {
   const LoginPanel({
     super.key,
+    required this.nameController,
     required this.phoneController,
     required this.otpController,
     required this.otpSent,
@@ -751,10 +823,10 @@ class LoginPanel extends StatelessWidget {
     required this.animation,
     required this.onSendOtp,
     required this.onLogin,
-    required this.onDemoLogin,
     this.message,
   });
 
+  final TextEditingController nameController;
   final TextEditingController phoneController;
   final TextEditingController otpController;
   final bool otpSent;
@@ -765,7 +837,6 @@ class LoginPanel extends StatelessWidget {
   final String? message;
   final VoidCallback onSendOtp;
   final VoidCallback onLogin;
-  final VoidCallback onDemoLogin;
 
   @override
   Widget build(BuildContext context) {
@@ -844,6 +915,44 @@ class LoginPanel extends StatelessWidget {
                   const SizedBox(height: 14),
                   SupabaseStatusPill(connected: connected),
                   const SizedBox(height: 16),
+                  TextField(
+                    controller: nameController,
+                    textCapitalization: TextCapitalization.words,
+                    keyboardType: TextInputType.name,
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(
+                        Icons.person_rounded,
+                        color: AppColors.green,
+                      ),
+                      hintText: 'Your full name',
+                      hintStyle: const TextStyle(
+                        color: AppColors.muted,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFFF3F7FB),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 17,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(999),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(999),
+                        borderSide: BorderSide(color: AppColors.line),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(999),
+                        borderSide: const BorderSide(
+                          color: AppColors.green,
+                          width: 1.4,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   TextField(
                     controller: phoneController,
                     keyboardType: TextInputType.phone,
@@ -994,12 +1103,6 @@ class LoginPanel extends StatelessWidget {
                     onTap: busy ? null : (otpSent ? onLogin : onSendOtp),
                   ),
                   const SizedBox(height: 12),
-                  Center(
-                    child: TextButton(
-                      onPressed: busy ? null : onDemoLogin,
-                      child: const Text('Explore demo without login'),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -1202,9 +1305,7 @@ class SupabaseStatusPill extends StatelessWidget {
           const SizedBox(width: 7),
           Expanded(
             child: Text(
-              connected
-                  ? 'Supabase connected'
-                  : 'Demo mode until keys are added',
+              connected ? 'Supabase connected' : 'OTP service not configured',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -1311,7 +1412,10 @@ class LandingFeature {
 }
 
 class AppShell extends StatefulWidget {
-  const AppShell({super.key});
+  const AppShell({super.key, required this.profile, required this.onLogout});
+
+  final AppUserProfile profile;
+  final Future<void> Function() onLogout;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -1323,11 +1427,11 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      const HomeScreen(),
+      HomeScreen(profile: widget.profile, onLogout: widget.onLogout),
       const AppointmentsScreen(),
       const SizedBox.shrink(),
       const MessagesScreen(),
-      const ProfileScreen(),
+      ProfileScreen(profile: widget.profile, onLogout: widget.onLogout),
     ];
 
     return LayoutBuilder(
@@ -1447,7 +1551,10 @@ class DesktopRail extends StatelessWidget {
 }
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, required this.profile, required this.onLogout});
+
+  final AppUserProfile profile;
+  final Future<void> Function() onLogout;
 
   @override
   Widget build(BuildContext context) {
@@ -1455,11 +1562,11 @@ class HomeScreen extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 112),
         children: [
-          const HomeHeader(),
+          HomeHeader(profile: profile, onLogout: onLogout),
           const SizedBox(height: 30),
-          const Text(
-            'Hello, Priya',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+          Text(
+            'Hello, ${profile.firstName}',
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 8),
           const Text(
@@ -1549,7 +1656,7 @@ class HomeScreen extends StatelessWidget {
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => const HealthRecordsScreen(),
+                    builder: (_) => HealthRecordsScreen(profile: profile),
                   ),
                 ),
               ),
@@ -2426,17 +2533,12 @@ class HealthSchemesScreen extends StatelessWidget {
 }
 
 class HealthRecordsScreen extends StatelessWidget {
-  const HealthRecordsScreen({super.key});
+  const HealthRecordsScreen({super.key, required this.profile});
+
+  final AppUserProfile profile;
 
   @override
   Widget build(BuildContext context) {
-    const records = [
-      ('Blood Report', 'CBC and lipid profile - uploaded today'),
-      ('Prescription', 'Dr. Ananya Sharma - Atorvastatin 10mg'),
-      ('Allergy', 'Penicillin sensitivity marked as important'),
-      ('Vaccination', 'Tetanus booster due in 2027'),
-    ];
-
     return Scaffold(
       body: AppPage(
         child: ListView(
@@ -2460,20 +2562,20 @@ class HealthRecordsScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 14),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Priya Sharma',
-                          style: TextStyle(
+                          profile.name,
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
-                        SizedBox(height: 4),
-                        Text(
-                          '4 verified records stored locally for demo.',
+                        const SizedBox(height: 4),
+                        const Text(
+                          'No uploaded health records yet.',
                           style: TextStyle(
                             color: AppColors.muted,
                             fontSize: 12,
@@ -2486,42 +2588,24 @@ class HealthRecordsScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 18),
-            for (final record in records)
-              AppCard(
-                margin: const EdgeInsets.only(bottom: 12),
-                onTap: () => ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text('${record.$1} opened'))),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.description_rounded,
-                      color: AppColors.navy,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            record.$1,
-                            style: const TextStyle(fontWeight: FontWeight.w900),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            record.$2,
-                            style: const TextStyle(
-                              color: AppColors.muted,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
+            AppCard(
+              padding: const EdgeInsets.all(18),
+              child: Row(
+                children: [
+                  const Icon(Icons.add_circle_rounded, color: AppColors.green),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Upload reports or prescriptions after backend storage is connected.',
+                      style: TextStyle(
+                        color: AppColors.muted,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const Icon(Icons.chevron_right_rounded),
-                  ],
-                ),
+                  ),
+                ],
               ),
+            ),
           ],
         ),
       ),
@@ -2639,7 +2723,14 @@ class MessagesScreen extends StatelessWidget {
 }
 
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({
+    super.key,
+    required this.profile,
+    required this.onLogout,
+  });
+
+  final AppUserProfile profile;
+  final Future<void> Function() onLogout;
 
   @override
   Widget build(BuildContext context) {
@@ -2653,7 +2744,7 @@ class ProfileScreen extends StatelessWidget {
             trailingIcon: Icons.settings_outlined,
           ),
           const SizedBox(height: 18),
-          const ProfileHeaderCard(),
+          ProfileHeaderCard(profile: profile),
           const SizedBox(height: 24),
           const Text(
             'My Health',
@@ -2665,7 +2756,9 @@ class ProfileScreen extends StatelessWidget {
             title: 'Health Records',
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const HealthRecordsScreen()),
+              MaterialPageRoute(
+                builder: (_) => HealthRecordsScreen(profile: profile),
+              ),
             ),
           ),
           ProfileMenuItem(
@@ -2786,9 +2879,7 @@ class ProfileScreen extends StatelessWidget {
             icon: Icons.logout_rounded,
             title: 'Logout',
             danger: true,
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Logged out in demo mode.')),
-            ),
+            onTap: onLogout,
           ),
         ],
       ),
@@ -2865,7 +2956,10 @@ class AppPage extends StatelessWidget {
 }
 
 class HomeHeader extends StatelessWidget {
-  const HomeHeader({super.key});
+  const HomeHeader({super.key, required this.profile, required this.onLogout});
+
+  final AppUserProfile profile;
+  final Future<void> Function() onLogout;
 
   @override
   Widget build(BuildContext context) {
@@ -2875,7 +2969,10 @@ class HomeHeader extends StatelessWidget {
           icon: Icons.menu_rounded,
           onTap: () => Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const ProfileScreen()),
+            MaterialPageRoute(
+              builder: (_) =>
+                  ProfileScreen(profile: profile, onLogout: onLogout),
+            ),
           ),
         ),
         const Spacer(),
@@ -5017,7 +5114,9 @@ class MessageTile extends StatelessWidget {
 }
 
 class ProfileHeaderCard extends StatelessWidget {
-  const ProfileHeaderCard({super.key});
+  const ProfileHeaderCard({super.key, required this.profile});
+
+  final AppUserProfile profile;
 
   @override
   Widget build(BuildContext context) {
@@ -5025,12 +5124,12 @@ class ProfileHeaderCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [
-          const CircleAvatar(
+          CircleAvatar(
             radius: 33,
-            backgroundColor: Color(0xFF91B7F2),
+            backgroundColor: const Color(0xFF91B7F2),
             child: Text(
-              'P',
-              style: TextStyle(
+              profile.initial,
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 28,
                 fontWeight: FontWeight.w900,
@@ -5038,22 +5137,21 @@ class ProfileHeaderCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 16),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Priya Sharma',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                  profile.name,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  '+91 98765 43210',
-                  style: TextStyle(color: AppColors.muted, fontSize: 12),
-                ),
-                Text(
-                  'priya.sharma@email.com',
-                  style: TextStyle(color: AppColors.muted, fontSize: 12),
+                  profile.phone,
+                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
                 ),
               ],
             ),

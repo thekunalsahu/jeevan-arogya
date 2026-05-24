@@ -21,18 +21,16 @@ class JeevanArogyaRepository {
     return client.auth.onAuthStateChange;
   }
 
-  Future<bool> signInWithGoogle() async {
+  Future<String> sendPhoneOtp({
+    required String phone,
+    required String fullName,
+  }) async {
     final client = _requireClient();
-    return client.auth.signInWithOAuth(
-      OAuthProvider.google,
-      redirectTo: SupabaseConfig.oauthRedirectUrl,
+    final normalizedPhone = normalizePhone(phone);
+    await client.auth.signInWithOtp(
+      phone: normalizedPhone,
+      data: {'full_name': fullName.trim(), 'phone': normalizedPhone},
     );
-  }
-
-  Future<String> sendPhoneOtp(String phone) async {
-    final client = _requireClient();
-    final normalizedPhone = _normalizePhone(phone);
-    await client.auth.signInWithOtp(phone: normalizedPhone);
     return normalizedPhone;
   }
 
@@ -42,7 +40,7 @@ class JeevanArogyaRepository {
   }) async {
     final client = _requireClient();
     await client.auth.verifyOTP(
-      phone: _normalizePhone(phone),
+      phone: normalizePhone(phone),
       token: token.replaceAll(' ', ''),
       type: OtpType.sms,
     );
@@ -183,15 +181,13 @@ class JeevanArogyaRepository {
   Future<void> upsertProfile({
     required String fullName,
     required String phone,
-    required String email,
   }) async {
     final client = _requireClient();
     final userId = _requireUserId();
     await client.from('profiles').upsert({
       'id': userId,
       'full_name': fullName,
-      'phone': phone,
-      'email': email,
+      'phone': normalizePhone(phone),
       'updated_at': DateTime.now().toIso8601String(),
     });
   }
@@ -212,7 +208,7 @@ class JeevanArogyaRepository {
     return id;
   }
 
-  String _normalizePhone(String phone) {
+  String normalizePhone(String phone) {
     final trimmed = phone.trim();
     final digits = trimmed.replaceAll(RegExp(r'\D'), '');
     if (trimmed.startsWith('+')) {

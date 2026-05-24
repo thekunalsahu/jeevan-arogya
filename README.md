@@ -5,11 +5,11 @@ A Flutter healthcare assistance app with a polished mobile UI, emergency SOS flo
 ## Features
 
 - Modern Flutter landing and login experience
-- Mobile OTP and Gmail auth integration via Supabase
+- Mobile OTP auth integration via Supabase and Twilio
 - Emergency SOS card with animated pulse effect
 - Doctor listings, appointment booking UI, hospital discovery, emergency cab UI
 - Supabase schema for profiles, doctors, appointments, SOS alerts, cab requests, and supporting data
-- Demo fallback mode for local development
+- Location-gated maps for nearby hospitals, doctors, medicines, and cab flows
 
 ## Setup
 
@@ -30,11 +30,7 @@ flutter run -d chrome
 
 ## Supabase Auth
 
-For Google login, enable the Google provider in Supabase and add this callback URL in Google Cloud Console:
-
-```text
-https://swyerkuqipjjehjidxul.supabase.co/auth/v1/callback
-```
+Enable Phone auth in Supabase and configure Twilio as the SMS provider.
 
 For local web development, set Supabase Auth URL configuration to:
 

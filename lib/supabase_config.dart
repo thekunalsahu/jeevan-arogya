@@ -52,7 +52,7 @@ class SupabaseConfig {
     final hasCredentials = url.startsWith('https://') && anonKey.length > 40;
     if (!hasCredentials) {
       debugPrint(
-        'Supabase credentials missing. Running Jeevan Arogya in demo mode.',
+        'Supabase credentials missing. OTP and live data are disabled.',
       );
       _ready = false;
       return;

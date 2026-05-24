@@ -3,9 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gravitymeet/main.dart';
 
 void main() {
-  testWidgets('Jeevan Arogya landing opens the live home screen', (
-    tester,
-  ) async {
+  testWidgets('Jeevan Arogya landing shows OTP login fields', (tester) async {
     await tester.pumpWidget(const JeevanArogyaApp());
 
     expect(
@@ -18,12 +16,8 @@ void main() {
 
     expect(find.text('Welcome back'), findsOneWidget);
     expect(find.text('Mobile OTP Login'), findsOneWidget);
-
-    await tester.ensureVisible(find.text('Explore demo without login'));
-    await tester.tap(find.text('Explore demo without login'));
-    await tester.pump(const Duration(milliseconds: 700));
-
-    expect(find.text('How can we help\nyou today?'), findsOneWidget);
-    expect(find.text('Tap SOS for\nimmediate help'), findsOneWidget);
+    expect(find.byType(TextField), findsNWidgets(2));
+    expect(find.text('Explore demo without login'), findsNothing);
+    expect(find.text('Continue with Gmail'), findsNothing);
   });
 }
