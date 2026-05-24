@@ -35,7 +35,7 @@ class JeevanArogyaRepository {
       await _sendViaTwilioVerify(normalizedPhone);
       _lastOtpProvider = OtpProvider.twilioVerify;
       return normalizedPhone;
-    } catch (_) {
+    } on OtpApiUnavailable {
       final client = _requireClient();
       await client.auth.signInWithOtp(
         phone: normalizedPhone,
@@ -255,7 +255,7 @@ class JeevanArogyaRepository {
           body: jsonEncode({'phone': phone}),
         )
         .timeout(const Duration(seconds: 12));
-    final data = _decodeResponse(response.body);
+    final data = _decodeResponse(response);
     if (response.statusCode < 200 ||
         response.statusCode >= 300 ||
         data['ok'] != true) {
@@ -271,7 +271,7 @@ class JeevanArogyaRepository {
           body: jsonEncode({'phone': phone, 'code': token.replaceAll(' ', '')}),
         )
         .timeout(const Duration(seconds: 12));
-    final data = _decodeResponse(response.body);
+    final data = _decodeResponse(response);
     if (response.statusCode < 200 ||
         response.statusCode >= 300 ||
         data['ok'] != true) {
@@ -279,13 +279,27 @@ class JeevanArogyaRepository {
     }
   }
 
-  Map<String, dynamic> _decodeResponse(String body) {
-    final decoded = jsonDecode(body);
-    if (decoded is Map<String, dynamic>) {
-      return decoded;
+  Map<String, dynamic> _decodeResponse(http.Response response) {
+    final contentType = response.headers['content-type'] ?? '';
+    final body = response.body.trimLeft();
+    if (!contentType.contains('application/json') ||
+        body.startsWith('<!DOCTYPE') ||
+        body.startsWith('<html')) {
+      throw OtpApiUnavailable();
+    }
+
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        return decoded;
+      }
+    } on FormatException {
+      throw OtpApiUnavailable();
     }
     return {'ok': false, 'error': 'Unexpected OTP server response.'};
   }
 }
 
 enum OtpProvider { supabase, twilioVerify }
+
+class OtpApiUnavailable implements Exception {}

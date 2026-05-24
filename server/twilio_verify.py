@@ -63,6 +63,19 @@ def twilio_config():
     return account_sid, auth_token, service_sid
 
 
+def twilio_env_status():
+    account_sid = os.environ.get("TWILIO_ACCOUNT_SID", "").strip()
+    auth_token = os.environ.get("TWILIO_AUTH_TOKEN", "").strip()
+    service_sid = os.environ.get("TWILIO_VERIFY_SERVICE_SID", "").strip()
+    return {
+        "ok": bool(account_sid and auth_token and service_sid),
+        "twilio_account_sid": bool(account_sid),
+        "twilio_auth_token": bool(auth_token),
+        "twilio_verify_service_sid": bool(service_sid),
+        "service_sid_prefix": service_sid[:2] if service_sid else "",
+    }
+
+
 def twilio_error(error):
     return str(error)
 

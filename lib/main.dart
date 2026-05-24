@@ -366,7 +366,7 @@ String friendlyAuthError(Object error) {
   final text = error.toString().replaceFirst('AuthException(message: ', '');
   if (text.toLowerCase().contains('sms') ||
       text.toLowerCase().contains('twilio')) {
-    return '$text Check Supabase Auth > Phone provider/Twilio settings.';
+    return '$text Check Vercel Twilio env vars and Twilio Verify service.';
   }
   return text;
 }
