@@ -9,6 +9,7 @@ linux
 macos
 windows
 test
+test_otp_server.py
 *.log
 flutter_web.err.log
 flutter_web.out.log

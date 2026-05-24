@@ -51,28 +51,47 @@ class TwilioApiError(Exception):
     pass
 
 
+def clean_env(name):
+    value = os.environ.get(name, "").strip()
+    if (value.startswith("'") and value.endswith("'")) or (
+        value.startswith('"') and value.endswith('"')
+    ):
+        value = value[1:-1].strip()
+    return value
+
+
 def twilio_config():
-    account_sid = os.environ.get("TWILIO_ACCOUNT_SID", "").strip()
-    auth_token = os.environ.get("TWILIO_AUTH_TOKEN", "").strip()
-    service_sid = os.environ.get("TWILIO_VERIFY_SERVICE_SID", "").strip()
+    account_sid = clean_env("TWILIO_ACCOUNT_SID")
+    auth_token = clean_env("TWILIO_AUTH_TOKEN")
+    service_sid = clean_env("TWILIO_VERIFY_SERVICE_SID")
     if not account_sid or not auth_token or not service_sid:
         raise RuntimeError(
             "Twilio env missing. Set TWILIO_ACCOUNT_SID, "
             "TWILIO_AUTH_TOKEN, and TWILIO_VERIFY_SERVICE_SID in Vercel."
         )
+    if not account_sid.startswith("AC"):
+        raise RuntimeError("TWILIO_ACCOUNT_SID must start with AC.")
+    if not service_sid.startswith("VA"):
+        raise RuntimeError("TWILIO_VERIFY_SERVICE_SID must start with VA.")
+    if len(auth_token) < 20:
+        raise RuntimeError("TWILIO_AUTH_TOKEN looks too short.")
     return account_sid, auth_token, service_sid
 
 
 def twilio_env_status():
-    account_sid = os.environ.get("TWILIO_ACCOUNT_SID", "").strip()
-    auth_token = os.environ.get("TWILIO_AUTH_TOKEN", "").strip()
-    service_sid = os.environ.get("TWILIO_VERIFY_SERVICE_SID", "").strip()
+    account_sid = clean_env("TWILIO_ACCOUNT_SID")
+    auth_token = clean_env("TWILIO_AUTH_TOKEN")
+    service_sid = clean_env("TWILIO_VERIFY_SERVICE_SID")
     return {
         "ok": bool(account_sid and auth_token and service_sid),
         "twilio_account_sid": bool(account_sid),
         "twilio_auth_token": bool(auth_token),
         "twilio_verify_service_sid": bool(service_sid),
+        "account_sid_prefix": account_sid[:2] if account_sid else "",
         "service_sid_prefix": service_sid[:2] if service_sid else "",
+        "account_sid_valid": account_sid.startswith("AC") if account_sid else False,
+        "service_sid_valid": service_sid.startswith("VA") if service_sid else False,
+        "auth_token_length_ok": len(auth_token) >= 20 if auth_token else False,
     }
 
 

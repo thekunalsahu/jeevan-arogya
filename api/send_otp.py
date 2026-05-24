@@ -34,5 +34,9 @@ class handler(BaseHTTPRequestHandler):
             write_json(
                 self,
                 HTTPStatus.BAD_REQUEST,
-                {"ok": False, "error": twilio_error(error)},
+                {
+                    "ok": False,
+                    "stage": "send_otp",
+                    "error": twilio_error(error),
+                },
             )

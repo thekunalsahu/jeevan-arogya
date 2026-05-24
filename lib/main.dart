@@ -363,10 +363,18 @@ String formatDistanceKm(double km) {
 }
 
 String friendlyAuthError(Object error) {
-  final text = error.toString().replaceFirst('AuthException(message: ', '');
+  var text = error.toString().replaceFirst('AuthException(message: ', '');
+  for (final prefix in ['Bad state:', 'Exception:', 'StateError:']) {
+    if (text.toLowerCase().startsWith(prefix.toLowerCase())) {
+      text = text.substring(prefix.length).trim();
+    }
+  }
   if (text.toLowerCase().contains('sms') ||
       text.toLowerCase().contains('twilio')) {
     return '$text Check Vercel Twilio env vars and Twilio Verify service.';
+  }
+  if (text.toLowerCase().contains('invalid parameters')) {
+    return 'Invalid Twilio parameters. Check TWILIO_VERIFY_SERVICE_SID starts with VA, Account SID starts with AC, Auth Token is correct, and the mobile number has country code.';
   }
   return text;
 }

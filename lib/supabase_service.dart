@@ -242,7 +242,7 @@ class JeevanArogyaRepository {
   Uri _apiUri(String path) {
     final origin = Uri.base.origin;
     if (!origin.startsWith('http')) {
-      throw StateError('Twilio API is available only on web deployment.');
+      throw const OtpFailure('Twilio API is available only on web deployment.');
     }
     return Uri.parse('$origin/api/$path');
   }
@@ -259,7 +259,11 @@ class JeevanArogyaRepository {
     if (response.statusCode < 200 ||
         response.statusCode >= 300 ||
         data['ok'] != true) {
-      throw StateError(data['error']?.toString() ?? 'Twilio OTP send failed.');
+      throw OtpFailure(
+        _cleanOtpMessage(
+          data['error']?.toString() ?? 'Twilio OTP send failed.',
+        ),
+      );
     }
   }
 
@@ -275,7 +279,11 @@ class JeevanArogyaRepository {
     if (response.statusCode < 200 ||
         response.statusCode >= 300 ||
         data['ok'] != true) {
-      throw StateError(data['error']?.toString() ?? 'Invalid or expired OTP.');
+      throw OtpFailure(
+        _cleanOtpMessage(
+          data['error']?.toString() ?? 'Invalid or expired OTP.',
+        ),
+      );
     }
   }
 
@@ -298,8 +306,35 @@ class JeevanArogyaRepository {
     }
     return {'ok': false, 'error': 'Unexpected OTP server response.'};
   }
+
+  String _cleanOtpMessage(String message) {
+    var cleaned = message.trim();
+    for (final prefix in [
+      'Bad state:',
+      'Exception:',
+      'StateError:',
+      'TwilioApiError:',
+    ]) {
+      if (cleaned.toLowerCase().startsWith(prefix.toLowerCase())) {
+        cleaned = cleaned.substring(prefix.length).trim();
+      }
+    }
+    if (cleaned.toLowerCase() == 'invalid parameters') {
+      return 'Invalid Twilio parameters. Check TWILIO_VERIFY_SERVICE_SID starts with VA, Account SID starts with AC, Auth Token is correct, and the phone number includes country code.';
+    }
+    return cleaned;
+  }
 }
 
 enum OtpProvider { supabase, twilioVerify }
 
 class OtpApiUnavailable implements Exception {}
+
+class OtpFailure implements Exception {
+  const OtpFailure(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
