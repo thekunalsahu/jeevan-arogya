@@ -11,7 +11,6 @@ class JeevanArogyaRepository {
     : _client = client ?? SupabaseConfig.client;
 
   final SupabaseClient? _client;
-  OtpProvider _lastOtpProvider = OtpProvider.supabaseEmail;
 
   bool get isConnected => _client != null;
 
@@ -30,51 +29,16 @@ class JeevanArogyaRepository {
     required String fullName,
   }) async {
     final normalizedEmail = normalizeEmail(email);
-
-    try {
-      await _sendViaEmailOtpService(normalizedEmail);
-      _lastOtpProvider = OtpProvider.githubEmailOtpService;
-      return normalizedEmail;
-    } on OtpApiUnavailable {
-      await _sendViaSupabaseEmailOtp(normalizedEmail, fullName);
-    } on OtpFailure catch (error) {
-      if (!_canFallbackToSupabaseEmail(error.message)) {
-        rethrow;
-      }
-      await _sendViaSupabaseEmailOtp(normalizedEmail, fullName);
-    }
-
+    await _sendViaEmailOtpService(normalizedEmail, fullName.trim());
     return normalizedEmail;
-  }
-
-  Future<void> _sendViaSupabaseEmailOtp(
-    String normalizedEmail,
-    String fullName,
-  ) async {
-      final client = _requireClient();
-      await client.auth.signInWithOtp(
-        email: normalizedEmail,
-        data: {'full_name': fullName.trim(), 'email': normalizedEmail},
-      );
-      _lastOtpProvider = OtpProvider.supabaseEmail;
   }
 
   Future<bool> verifyEmailOtp({
     required String email,
     required String token,
   }) async {
-    if (_lastOtpProvider == OtpProvider.githubEmailOtpService) {
-      await _verifyViaEmailOtpService(normalizeEmail(email), token);
-      return false;
-    }
-
-    final client = _requireClient();
-    await client.auth.verifyOTP(
-      email: normalizeEmail(email),
-      token: token.replaceAll(' ', ''),
-      type: OtpType.email,
-    );
-    return true;
+    await _verifyViaEmailOtpService(normalizeEmail(email), token);
+    return false;
   }
 
   Future<void> signOut() async {
@@ -257,12 +221,12 @@ class JeevanArogyaRepository {
     return Uri.parse('$origin/api/$path');
   }
 
-  Future<void> _sendViaEmailOtpService(String email) async {
+  Future<void> _sendViaEmailOtpService(String email, String fullName) async {
     final response = await http
         .post(
           _apiUri('send_email_otp'),
           headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'email': email}),
+          body: jsonEncode({'email': email, 'full_name': fullName}),
         )
         .timeout(const Duration(seconds: 12));
     final data = _decodeResponse(response);
@@ -336,18 +300,7 @@ class JeevanArogyaRepository {
     return cleaned;
   }
 
-  bool _canFallbackToSupabaseEmail(String message) {
-    final normalized = message.toLowerCase();
-    return normalized.contains('method not allowed') ||
-        normalized.contains('email_otp_service_url is missing') ||
-        normalized.contains('email_otp_service_url must start') ||
-        normalized.contains('not found') ||
-        normalized.contains('404') ||
-        normalized.contains('405');
-  }
 }
-
-enum OtpProvider { supabaseEmail, githubEmailOtpService }
 
 class OtpApiUnavailable implements Exception {}
 
