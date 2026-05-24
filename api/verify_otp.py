@@ -5,7 +5,7 @@ from server.twilio_verify import (
     handle_options,
     normalize_phone,
     read_json,
-    twilio_client,
+    check_verification,
     twilio_error,
     write_json,
 )
@@ -23,11 +23,9 @@ class handler(BaseHTTPRequestHandler):
             if len(code) < 4:
                 raise ValueError("Valid OTP code required.")
 
-            client, service_sid = twilio_client()
-            check = client.verify.v2.services(
-                service_sid
-            ).verification_checks.create(to=phone, code=code)
-            approved = check.status == "approved"
+            check = check_verification(phone, code)
+            status = check.get("status")
+            approved = status == "approved"
             write_json(
                 self,
                 HTTPStatus.OK if approved else HTTPStatus.UNAUTHORIZED,
@@ -35,7 +33,7 @@ class handler(BaseHTTPRequestHandler):
                     "ok": approved,
                     "provider": "twilio_verify",
                     "phone": phone,
-                    "status": check.status,
+                    "status": status,
                     "error": None if approved else "Invalid or expired OTP.",
                 },
             )

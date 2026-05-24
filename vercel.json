@@ -1,7 +1,16 @@
 {
   "buildCommand": "bash scripts/vercel-build.sh",
   "outputDirectory": "build/web",
+  "functions": {
+    "api/*.py": {
+      "excludeFiles": "{.dart_tool,.flutter,build,android,ios,linux,macos,windows}/**"
+    }
+  },
   "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"

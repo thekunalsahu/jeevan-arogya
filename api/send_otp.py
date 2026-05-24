@@ -5,7 +5,7 @@ from server.twilio_verify import (
     handle_options,
     normalize_phone,
     read_json,
-    twilio_client,
+    send_verification,
     twilio_error,
     write_json,
 )
@@ -19,10 +19,7 @@ class handler(BaseHTTPRequestHandler):
         try:
             data = read_json(self)
             phone = normalize_phone(data.get("phone"))
-            client, service_sid = twilio_client()
-            verification = client.verify.v2.services(
-                service_sid
-            ).verifications.create(to=phone, channel="sms")
+            verification = send_verification(phone)
             write_json(
                 self,
                 HTTPStatus.OK,
@@ -30,7 +27,7 @@ class handler(BaseHTTPRequestHandler):
                     "ok": True,
                     "provider": "twilio_verify",
                     "phone": phone,
-                    "status": verification.status,
+                    "status": verification.get("status", "pending"),
                 },
             )
         except Exception as error:

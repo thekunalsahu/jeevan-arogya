@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ ! -d ".flutter" ]; then
-  git clone https://github.com/flutter/flutter.git -b stable --depth 1 .flutter
+FLUTTER_ROOT="${VERCEL_FLUTTER_ROOT:-/tmp/flutter-stable}"
+
+if [ ! -d "$FLUTTER_ROOT" ]; then
+  git clone https://github.com/flutter/flutter.git -b stable --depth 1 "$FLUTTER_ROOT"
 fi
 
-export PATH="$PWD/.flutter/bin:$PATH"
+export PATH="$FLUTTER_ROOT/bin:$PATH"
 
 flutter config --enable-web
 flutter pub get
