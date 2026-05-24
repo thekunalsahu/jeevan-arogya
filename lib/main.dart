@@ -636,30 +636,7 @@ class LandingTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const LogoMark(width: 148, height: 56),
-        const Spacer(),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: .86),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white),
-          ),
-          child: const Row(
-            children: [
-              Icon(Icons.shield_rounded, color: AppColors.green, size: 18),
-              SizedBox(width: 6),
-              Text(
-                'Care network',
-                style: TextStyle(fontWeight: FontWeight.w900),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
+    return Row(children: [const LogoMark(width: 148, height: 56)]);
   }
 }
 
@@ -1482,7 +1459,15 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 22),
           const SearchBox(hint: 'Search doctors, hospitals, services...'),
-          const DoctorAvailabilityTicker(),
+          AnimatedBuilder(
+            animation: appLocation,
+            builder: (context, _) {
+              if (!appLocation.resolved) {
+                return const SizedBox.shrink();
+              }
+              return const DoctorAvailabilityTicker();
+            },
+          ),
           const SizedBox(height: 18),
           const EmergencyBanner(),
           const SizedBox(height: 18),
@@ -1569,6 +1554,14 @@ class HomeScreen extends StatelessWidget {
           AnimatedBuilder(
             animation: appLocation,
             builder: (context, _) {
+              if (!appLocation.resolved) {
+                return const LocationRequiredPanel(
+                  title: 'Enable GPS for nearby care',
+                  subtitle:
+                      'Nearby hospitals and emergency distances appear only after live GPS permission.',
+                  icon: Icons.local_hospital_rounded,
+                );
+              }
               final nearby = [...hospitals]
                 ..sort(
                   (a, b) => distanceKm(
@@ -1681,6 +1674,95 @@ class LocationInsightCard extends StatelessWidget {
   }
 }
 
+class LocationRequiredPanel extends StatelessWidget {
+  const LocationRequiredPanel({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: appLocation,
+      builder: (context, _) {
+        return AppCard(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: AppColors.blue.withValues(alpha: .11),
+                      borderRadius: BorderRadius.circular(17),
+                    ),
+                    child: Icon(icon, color: AppColors.blue),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          style: const TextStyle(
+                            color: AppColors.muted,
+                            height: 1.35,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (appLocation.message != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  appLocation.message!,
+                  style: const TextStyle(
+                    color: AppColors.green,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+              PillActionButton(
+                label: appLocation.loading
+                    ? 'Detecting GPS...'
+                    : 'Enable GPS Location',
+                icon: Icons.gps_fixed_rounded,
+                onTap: appLocation.loading
+                    ? null
+                    : appLocation.requestCurrentLocation,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
 class DoctorLocationPrompt extends StatelessWidget {
   const DoctorLocationPrompt({super.key});
 
@@ -1768,19 +1850,34 @@ class FindDoctorsScreen extends StatelessWidget {
             const SizedBox(height: 24),
             const SearchBox(hint: 'Search by name, specialization...'),
             const SizedBox(height: 12),
-            const DoctorLocationPrompt(),
-            const SizedBox(height: 16),
-            const CategoryChips(
-              labels: [
-                'All',
-                'Cardiologist',
-                'Dentist',
-                'Pediatrician',
-                'Gynecologist',
-              ],
+            AnimatedBuilder(
+              animation: appLocation,
+              builder: (context, _) {
+                if (!appLocation.resolved) {
+                  return const LocationRequiredPanel(
+                    title: 'Enable GPS to find doctors',
+                    subtitle:
+                        'Doctor availability and nearby appointment details unlock after live GPS permission.',
+                    icon: Icons.medical_information_rounded,
+                  );
+                }
+                return Column(
+                  children: [
+                    const CategoryChips(
+                      labels: [
+                        'All',
+                        'Cardiologist',
+                        'Dentist',
+                        'Pediatrician',
+                        'Gynecologist',
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    DoctorDirectoryList(repository: JeevanArogyaRepository()),
+                  ],
+                );
+              },
             ),
-            const SizedBox(height: 16),
-            DoctorDirectoryList(repository: JeevanArogyaRepository()),
           ],
         ),
       ),
@@ -2163,17 +2260,36 @@ class EmergencyCabScreen extends StatelessWidget {
                 onBack: () => Navigator.pop(context),
               ),
             ),
-            const Expanded(
-              child: Stack(
-                children: [
-                  Positioned.fill(child: MapPanel(mode: MapMode.route)),
-                  Positioned(
-                    left: 20,
-                    right: 20,
-                    bottom: 0,
-                    child: EmergencyRideCard(),
-                  ),
-                ],
+            Expanded(
+              child: AnimatedBuilder(
+                animation: appLocation,
+                builder: (context, _) {
+                  if (!appLocation.resolved) {
+                    return const Padding(
+                      padding: EdgeInsets.fromLTRB(20, 20, 20, 28),
+                      child: Align(
+                        alignment: Alignment.topCenter,
+                        child: LocationRequiredPanel(
+                          title: 'Enable GPS for emergency cab',
+                          subtitle:
+                              'Pickup, route and nearest hospital drop are shown only after real live GPS is available.',
+                          icon: Icons.local_taxi_rounded,
+                        ),
+                      ),
+                    );
+                  }
+                  return const Stack(
+                    children: [
+                      Positioned.fill(child: MapPanel(mode: MapMode.route)),
+                      Positioned(
+                        left: 20,
+                        right: 20,
+                        bottom: 0,
+                        child: EmergencyRideCard(),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ],
@@ -2201,36 +2317,41 @@ class NearbyHospitalsScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            const SizedBox(
-              height: 265,
-              child: MapPanel(mode: MapMode.hospitals),
-            ),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 26),
-                children: [
-                  AnimatedBuilder(
-                    animation: appLocation,
-                    builder: (context, _) {
-                      final nearby = [...hospitals]
-                        ..sort(
-                          (a, b) => distanceKm(appLocation.current, a.latLng)
-                              .compareTo(
-                                distanceKm(appLocation.current, b.latLng),
-                              ),
-                        );
-                      return Column(
-                        children: [
-                          for (final hospital in nearby)
-                            HospitalMiniCard(
-                              hospital: hospital,
-                              compact: false,
-                            ),
-                        ],
-                      );
-                    },
-                  ),
-                ],
+              child: AnimatedBuilder(
+                animation: appLocation,
+                builder: (context, _) {
+                  if (!appLocation.resolved) {
+                    return const Padding(
+                      padding: EdgeInsets.fromLTRB(20, 0, 20, 26),
+                      child: LocationRequiredPanel(
+                        title: 'Enable GPS for nearby hospitals',
+                        subtitle:
+                            'Hospitals, distance, map and call details unlock after live GPS permission.',
+                        icon: Icons.local_hospital_rounded,
+                      ),
+                    );
+                  }
+                  final nearby = [...hospitals]
+                    ..sort(
+                      (a, b) => distanceKm(
+                        appLocation.current,
+                        a.latLng,
+                      ).compareTo(distanceKm(appLocation.current, b.latLng)),
+                    );
+                  return ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 26),
+                    children: [
+                      const SizedBox(
+                        height: 265,
+                        child: MapPanel(mode: MapMode.hospitals),
+                      ),
+                      const SizedBox(height: 12),
+                      for (final hospital in nearby)
+                        HospitalMiniCard(hospital: hospital, compact: false),
+                    ],
+                  );
+                },
               ),
             ),
           ],
@@ -2412,30 +2533,40 @@ class JanAushadhiScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            const SizedBox(height: 265, child: MapPanel(mode: MapMode.kendras)),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 26),
-                children: [
-                  AnimatedBuilder(
-                    animation: appLocation,
-                    builder: (context, _) {
-                      final nearby = [...kendras]
-                        ..sort(
-                          (a, b) => distanceKm(appLocation.current, a.latLng)
-                              .compareTo(
-                                distanceKm(appLocation.current, b.latLng),
-                              ),
-                        );
-                      return Column(
-                        children: [
-                          for (final kendra in nearby)
-                            KendraCard(place: kendra),
-                        ],
-                      );
-                    },
-                  ),
-                ],
+              child: AnimatedBuilder(
+                animation: appLocation,
+                builder: (context, _) {
+                  if (!appLocation.resolved) {
+                    return const Padding(
+                      padding: EdgeInsets.fromLTRB(20, 0, 20, 26),
+                      child: LocationRequiredPanel(
+                        title: 'Enable GPS for Jan Aushadhi',
+                        subtitle:
+                            'Nearest store list, distance and map are hidden until live GPS permission is allowed.',
+                        icon: Icons.medication_liquid_rounded,
+                      ),
+                    );
+                  }
+                  final nearby = [...kendras]
+                    ..sort(
+                      (a, b) => distanceKm(
+                        appLocation.current,
+                        a.latLng,
+                      ).compareTo(distanceKm(appLocation.current, b.latLng)),
+                    );
+                  return ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 26),
+                    children: [
+                      const SizedBox(
+                        height: 265,
+                        child: MapPanel(mode: MapMode.kendras),
+                      ),
+                      const SizedBox(height: 12),
+                      for (final kendra in nearby) KendraCard(place: kendra),
+                    ],
+                  );
+                },
               ),
             ),
           ],

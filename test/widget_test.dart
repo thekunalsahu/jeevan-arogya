@@ -24,6 +24,6 @@ void main() {
     await tester.pump(const Duration(milliseconds: 700));
 
     expect(find.text('How can we help\nyou today?'), findsOneWidget);
-    expect(find.text('Next doctor available'), findsOneWidget);
+    expect(find.text('Tap SOS for\nimmediate help'), findsOneWidget);
   });
 }
