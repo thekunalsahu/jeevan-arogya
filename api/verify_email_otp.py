@@ -16,6 +16,18 @@ class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         handle_options(self)
 
+    def do_GET(self):
+        write_json(
+            self,
+            HTTPStatus.OK,
+            {
+                "ok": True,
+                "endpoint": "verify_email_otp",
+                "method": "POST",
+                "body": {"email": "user@example.com", "code": "123456"},
+            },
+        )
+
     def do_POST(self):
         try:
             data = read_json(self)

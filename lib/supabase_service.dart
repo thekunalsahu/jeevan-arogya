@@ -36,15 +36,27 @@ class JeevanArogyaRepository {
       _lastOtpProvider = OtpProvider.githubEmailOtpService;
       return normalizedEmail;
     } on OtpApiUnavailable {
+      await _sendViaSupabaseEmailOtp(normalizedEmail, fullName);
+    } on OtpFailure catch (error) {
+      if (!_canFallbackToSupabaseEmail(error.message)) {
+        rethrow;
+      }
+      await _sendViaSupabaseEmailOtp(normalizedEmail, fullName);
+    }
+
+    return normalizedEmail;
+  }
+
+  Future<void> _sendViaSupabaseEmailOtp(
+    String normalizedEmail,
+    String fullName,
+  ) async {
       final client = _requireClient();
       await client.auth.signInWithOtp(
         email: normalizedEmail,
         data: {'full_name': fullName.trim(), 'email': normalizedEmail},
       );
       _lastOtpProvider = OtpProvider.supabaseEmail;
-    }
-
-    return normalizedEmail;
   }
 
   Future<bool> verifyEmailOtp({
@@ -322,6 +334,16 @@ class JeevanArogyaRepository {
       return 'Invalid email OTP parameters. Check EMAIL_OTP_SERVICE_URL and request payload.';
     }
     return cleaned;
+  }
+
+  bool _canFallbackToSupabaseEmail(String message) {
+    final normalized = message.toLowerCase();
+    return normalized.contains('method not allowed') ||
+        normalized.contains('email_otp_service_url is missing') ||
+        normalized.contains('email_otp_service_url must start') ||
+        normalized.contains('not found') ||
+        normalized.contains('404') ||
+        normalized.contains('405');
   }
 }
 
