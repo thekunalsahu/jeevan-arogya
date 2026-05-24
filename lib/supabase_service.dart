@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'supabase_config.dart';
@@ -8,6 +11,7 @@ class JeevanArogyaRepository {
     : _client = client ?? SupabaseConfig.client;
 
   final SupabaseClient? _client;
+  OtpProvider _lastOtpProvider = OtpProvider.supabase;
 
   bool get isConnected => _client != null;
 
@@ -25,25 +29,40 @@ class JeevanArogyaRepository {
     required String phone,
     required String fullName,
   }) async {
-    final client = _requireClient();
     final normalizedPhone = normalizePhone(phone);
-    await client.auth.signInWithOtp(
-      phone: normalizedPhone,
-      data: {'full_name': fullName.trim(), 'phone': normalizedPhone},
-    );
+
+    try {
+      await _sendViaTwilioVerify(normalizedPhone);
+      _lastOtpProvider = OtpProvider.twilioVerify;
+      return normalizedPhone;
+    } catch (_) {
+      final client = _requireClient();
+      await client.auth.signInWithOtp(
+        phone: normalizedPhone,
+        data: {'full_name': fullName.trim(), 'phone': normalizedPhone},
+      );
+      _lastOtpProvider = OtpProvider.supabase;
+    }
+
     return normalizedPhone;
   }
 
-  Future<void> verifyPhoneOtp({
+  Future<bool> verifyPhoneOtp({
     required String phone,
     required String token,
   }) async {
+    if (_lastOtpProvider == OtpProvider.twilioVerify) {
+      await _verifyViaTwilioVerify(normalizePhone(phone), token);
+      return false;
+    }
+
     final client = _requireClient();
     await client.auth.verifyOTP(
       phone: normalizePhone(phone),
       token: token.replaceAll(' ', ''),
       type: OtpType.sms,
     );
+    return true;
   }
 
   Future<void> signOut() async {
@@ -219,4 +238,54 @@ class JeevanArogyaRepository {
     }
     return '+91$digits';
   }
+
+  Uri _apiUri(String path) {
+    final origin = Uri.base.origin;
+    if (!origin.startsWith('http')) {
+      throw StateError('Twilio API is available only on web deployment.');
+    }
+    return Uri.parse('$origin/api/$path');
+  }
+
+  Future<void> _sendViaTwilioVerify(String phone) async {
+    final response = await http
+        .post(
+          _apiUri('send_otp'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'phone': phone}),
+        )
+        .timeout(const Duration(seconds: 12));
+    final data = _decodeResponse(response.body);
+    if (response.statusCode < 200 ||
+        response.statusCode >= 300 ||
+        data['ok'] != true) {
+      throw StateError(data['error']?.toString() ?? 'Twilio OTP send failed.');
+    }
+  }
+
+  Future<void> _verifyViaTwilioVerify(String phone, String token) async {
+    final response = await http
+        .post(
+          _apiUri('verify_otp'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'phone': phone, 'code': token.replaceAll(' ', '')}),
+        )
+        .timeout(const Duration(seconds: 12));
+    final data = _decodeResponse(response.body);
+    if (response.statusCode < 200 ||
+        response.statusCode >= 300 ||
+        data['ok'] != true) {
+      throw StateError(data['error']?.toString() ?? 'Invalid or expired OTP.');
+    }
+  }
+
+  Map<String, dynamic> _decodeResponse(String body) {
+    final decoded = jsonDecode(body);
+    if (decoded is Map<String, dynamic>) {
+      return decoded;
+    }
+    return {'ok': false, 'error': 'Unexpected OTP server response.'};
+  }
 }
+
+enum OtpProvider { supabase, twilioVerify }

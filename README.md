@@ -49,3 +49,13 @@ SUPABASE_URL
 SUPABASE_ANON_KEY
 SUPABASE_REDIRECT_URL
 ```
+
+For direct Twilio OTP on Vercel, add these secret environment variables:
+
+```text
+TWILIO_ACCOUNT_SID
+TWILIO_AUTH_TOKEN
+TWILIO_VERIFY_SERVICE_SID
+```
+
+Create `TWILIO_VERIFY_SERVICE_SID` in Twilio Console under Verify Services. Do not put `TWILIO_AUTH_TOKEN` in Flutter code or commit it to GitHub.

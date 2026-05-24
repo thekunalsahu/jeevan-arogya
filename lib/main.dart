@@ -591,7 +591,7 @@ class _LandingScreenState extends State<LandingScreen>
           return;
         }
 
-        await widget.repository.verifyPhoneOtp(
+        final hasSupabaseSession = await widget.repository.verifyPhoneOtp(
           phone: _phoneController.text,
           token: token,
         );
@@ -599,13 +599,15 @@ class _LandingScreenState extends State<LandingScreen>
           name: _nameController.text.trim(),
           phone: widget.repository.normalizePhone(_phoneController.text),
         );
-        try {
-          await widget.repository.upsertProfile(
-            fullName: profile.name,
-            phone: profile.phone,
-          );
-        } catch (_) {
-          // Auth succeeded; profile sync can be retried after database setup.
+        if (hasSupabaseSession) {
+          try {
+            await widget.repository.upsertProfile(
+              fullName: profile.name,
+              phone: profile.phone,
+            );
+          } catch (_) {
+            // Auth succeeded; profile sync can be retried after database setup.
+          }
         }
         widget.onLogin(profile);
       } else {
