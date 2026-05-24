@@ -962,7 +962,7 @@ class LoginPanel extends StatelessWidget {
                         color: AppColors.blue,
                       ),
                       prefixText: '+91  ',
-                      hintText: '98765 43210',
+                      hintText: 'Mobile number',
                       hintStyle: const TextStyle(
                         color: AppColors.muted,
                         fontWeight: FontWeight.w700,
@@ -2823,9 +2823,9 @@ class ProfileScreen extends StatelessWidget {
                 builder: (_) => const SimpleInfoScreen(
                   title: 'Emergency Contacts',
                   lines: [
-                    'Rohit Sharma - Father - +91 98765 00001',
-                    'Neha Sharma - Sister - +91 98765 00002',
-                    'Local ambulance - 108',
+                    'No emergency contacts added yet.',
+                    'Add trusted family contacts from the backend profile module.',
+                    'Local ambulance helpline: 108',
                   ],
                 ),
               ),

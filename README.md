@@ -42,7 +42,7 @@ http://127.0.0.1:5173
 
 This repo includes `vercel.json` so Vercel builds Flutter Web and serves `build/web`.
 
-Add these environment variables in Vercel Project Settings if you want live Supabase auth/data:
+The app includes the public Supabase project URL and publishable anon key as a fallback so OTP does not show as unconfigured on Vercel. You can still override them in Vercel Project Settings:
 
 ```text
 SUPABASE_URL

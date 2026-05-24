@@ -12,15 +12,27 @@ class SupabaseConfig {
   static const _definedRedirectUrl = String.fromEnvironment(
     'SUPABASE_REDIRECT_URL',
   );
+  static const _fallbackUrl = 'https://swyerkuqipjjehjidxul.supabase.co';
+  static const _fallbackAnonKey =
+      'sb_publishable_FlQeYF2lAx55scQjv4gcqw_CJGn7hOu';
 
   static bool get isReady => _ready;
 
-  static String get url =>
-      _definedUrl.isNotEmpty ? _definedUrl : _envValue('SUPABASE_URL');
+  static String get url {
+    if (_definedUrl.isNotEmpty) {
+      return _definedUrl;
+    }
+    final envUrl = _envValue('SUPABASE_URL');
+    return envUrl.isNotEmpty ? envUrl : _fallbackUrl;
+  }
 
-  static String get anonKey => _definedAnonKey.isNotEmpty
-      ? _definedAnonKey
-      : _envValue('SUPABASE_ANON_KEY');
+  static String get anonKey {
+    if (_definedAnonKey.isNotEmpty) {
+      return _definedAnonKey;
+    }
+    final envAnonKey = _envValue('SUPABASE_ANON_KEY');
+    return envAnonKey.isNotEmpty ? envAnonKey : _fallbackAnonKey;
+  }
 
   static String get redirectUrl => _definedRedirectUrl.isNotEmpty
       ? _definedRedirectUrl
