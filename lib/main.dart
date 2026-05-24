@@ -369,12 +369,12 @@ String friendlyAuthError(Object error) {
       text = text.substring(prefix.length).trim();
     }
   }
-  if (text.toLowerCase().contains('sms') ||
-      text.toLowerCase().contains('twilio')) {
-    return '$text Check Vercel Twilio env vars and Twilio Verify service.';
+  if (text.toLowerCase().contains('otp') ||
+      text.toLowerCase().contains('email')) {
+    return '$text Check EMAIL_OTP_SERVICE_URL and your deployed email OTP service.';
   }
   if (text.toLowerCase().contains('invalid parameters')) {
-    return 'Invalid Twilio parameters. Check TWILIO_VERIFY_SERVICE_SID starts with VA, Account SID starts with AC, Auth Token is correct, and the mobile number has country code.';
+    return 'Invalid email OTP parameters. Check service URL and email input.';
   }
   return text;
 }
@@ -406,10 +406,12 @@ class AppUserProfile {
     final name = (metadata['full_name'] ?? metadata['name'] ?? '')
         .toString()
         .trim();
-    final phone = (user?.phone ?? metadata['phone'] ?? '').toString().trim();
+    final phone = (user?.email ?? metadata['email'] ?? metadata['phone'] ?? '')
+        .toString()
+        .trim();
     return AppUserProfile(
       name: name.isEmpty ? 'User' : name,
-      phone: phone.isEmpty ? 'Mobile number verified' : phone,
+      phone: phone.isEmpty ? 'Email verified' : phone,
     );
   }
 }
@@ -532,16 +534,16 @@ class _LandingScreenState extends State<LandingScreen>
 
   Future<void> _sendOtp() async {
     final name = _nameController.text.trim();
-    final phone = _phoneController.text.trim();
+    final email = _phoneController.text.trim();
     if (name.length < 2) {
       setState(() {
         _authMessage = 'Please enter your name.';
       });
       return;
     }
-    if (phone.isEmpty || phone.replaceAll(RegExp(r'\D'), '').length < 10) {
+    if (!email.contains('@') || !email.contains('.')) {
       setState(() {
-        _authMessage = 'Please enter a valid mobile number.';
+        _authMessage = 'Please enter a valid email address.';
       });
       return;
     }
@@ -553,13 +555,13 @@ class _LandingScreenState extends State<LandingScreen>
 
     try {
       if (widget.repository.isConnected) {
-        final normalizedPhone = await widget.repository.sendPhoneOtp(
-          phone: phone,
+        final normalizedEmail = await widget.repository.sendEmailOtp(
+          email: email,
           fullName: name,
         );
         setState(() {
           _otpSent = true;
-          _authMessage = 'OTP sent to $normalizedPhone. Enter the SMS code.';
+          _authMessage = 'OTP sent to $normalizedEmail. Enter the code.';
           _otp = '';
           _otpController.clear();
         });
@@ -594,18 +596,18 @@ class _LandingScreenState extends State<LandingScreen>
         final token = _otpController.text.replaceAll(RegExp(r'\s+'), '');
         if (token.length < 4) {
           setState(() {
-            _authMessage = 'Please enter the SMS OTP.';
+            _authMessage = 'Please enter the email OTP.';
           });
           return;
         }
 
-        final hasSupabaseSession = await widget.repository.verifyPhoneOtp(
-          phone: _phoneController.text,
+        final hasSupabaseSession = await widget.repository.verifyEmailOtp(
+          email: _phoneController.text,
           token: token,
         );
         final profile = AppUserProfile(
           name: _nameController.text.trim(),
-          phone: widget.repository.normalizePhone(_phoneController.text),
+          phone: widget.repository.normalizeEmail(_phoneController.text),
         );
         if (hasSupabaseSession) {
           try {
@@ -906,7 +908,7 @@ class LoginPanel extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   const Text(
-                    'Login securely with mobile OTP',
+                    'Login securely with email OTP',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -965,14 +967,13 @@ class LoginPanel extends StatelessWidget {
                   const SizedBox(height: 12),
                   TextField(
                     controller: phoneController,
-                    keyboardType: TextInputType.phone,
+                    keyboardType: TextInputType.emailAddress,
                     decoration: InputDecoration(
                       prefixIcon: const Icon(
-                        Icons.phone_iphone_rounded,
+                        Icons.alternate_email_rounded,
                         color: AppColors.blue,
                       ),
-                      prefixText: '+91  ',
-                      hintText: 'Mobile number',
+                      hintText: 'Email address',
                       hintStyle: const TextStyle(
                         color: AppColors.muted,
                         fontWeight: FontWeight.w700,

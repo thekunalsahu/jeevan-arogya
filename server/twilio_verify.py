@@ -99,6 +99,20 @@ def twilio_error(error):
     return str(error)
 
 
+def format_twilio_error(data, fallback):
+    message = data.get("message") or data.get("error") or fallback
+    code = data.get("code")
+    more_info = data.get("more_info")
+    details = []
+    if code:
+        details.append(f"code {code}")
+    if more_info:
+        details.append(str(more_info))
+    if details:
+        return f"{message} ({'; '.join(details)})"
+    return str(message)
+
+
 def twilio_post(path, payload):
     account_sid, auth_token, service_sid = twilio_config()
     url = f"https://verify.twilio.com/v2/Services/{service_sid}/{path}"
@@ -120,7 +134,7 @@ def twilio_post(path, payload):
         raw = error.read().decode("utf-8")
         try:
             data = json.loads(raw)
-            message = data.get("message") or data.get("error") or raw
+            message = format_twilio_error(data, raw)
         except json.JSONDecodeError:
             message = raw or error.reason
         raise TwilioApiError(message) from error

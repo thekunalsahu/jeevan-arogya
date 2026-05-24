@@ -11,7 +11,7 @@ class JeevanArogyaRepository {
     : _client = client ?? SupabaseConfig.client;
 
   final SupabaseClient? _client;
-  OtpProvider _lastOtpProvider = OtpProvider.supabase;
+  OtpProvider _lastOtpProvider = OtpProvider.supabaseEmail;
 
   bool get isConnected => _client != null;
 
@@ -25,42 +25,42 @@ class JeevanArogyaRepository {
     return client.auth.onAuthStateChange;
   }
 
-  Future<String> sendPhoneOtp({
-    required String phone,
+  Future<String> sendEmailOtp({
+    required String email,
     required String fullName,
   }) async {
-    final normalizedPhone = normalizePhone(phone);
+    final normalizedEmail = normalizeEmail(email);
 
     try {
-      await _sendViaTwilioVerify(normalizedPhone);
-      _lastOtpProvider = OtpProvider.twilioVerify;
-      return normalizedPhone;
+      await _sendViaEmailOtpService(normalizedEmail);
+      _lastOtpProvider = OtpProvider.githubEmailOtpService;
+      return normalizedEmail;
     } on OtpApiUnavailable {
       final client = _requireClient();
       await client.auth.signInWithOtp(
-        phone: normalizedPhone,
-        data: {'full_name': fullName.trim(), 'phone': normalizedPhone},
+        email: normalizedEmail,
+        data: {'full_name': fullName.trim(), 'email': normalizedEmail},
       );
-      _lastOtpProvider = OtpProvider.supabase;
+      _lastOtpProvider = OtpProvider.supabaseEmail;
     }
 
-    return normalizedPhone;
+    return normalizedEmail;
   }
 
-  Future<bool> verifyPhoneOtp({
-    required String phone,
+  Future<bool> verifyEmailOtp({
+    required String email,
     required String token,
   }) async {
-    if (_lastOtpProvider == OtpProvider.twilioVerify) {
-      await _verifyViaTwilioVerify(normalizePhone(phone), token);
+    if (_lastOtpProvider == OtpProvider.githubEmailOtpService) {
+      await _verifyViaEmailOtpService(normalizeEmail(email), token);
       return false;
     }
 
     final client = _requireClient();
     await client.auth.verifyOTP(
-      phone: normalizePhone(phone),
+      email: normalizeEmail(email),
       token: token.replaceAll(' ', ''),
-      type: OtpType.sms,
+      type: OtpType.email,
     );
     return true;
   }
@@ -206,7 +206,7 @@ class JeevanArogyaRepository {
     await client.from('profiles').upsert({
       'id': userId,
       'full_name': fullName,
-      'phone': normalizePhone(phone),
+      'phone': phone,
       'updated_at': DateTime.now().toIso8601String(),
     });
   }
@@ -227,32 +227,30 @@ class JeevanArogyaRepository {
     return id;
   }
 
-  String normalizePhone(String phone) {
-    final trimmed = phone.trim();
-    final digits = trimmed.replaceAll(RegExp(r'\D'), '');
-    if (trimmed.startsWith('+')) {
-      return '+$digits';
+  String normalizeEmail(String email) {
+    final normalized = email.trim().toLowerCase();
+    if (!normalized.contains('@')) {
+      throw const OtpFailure('Please enter a valid email address.');
     }
-    if (digits.startsWith('91') && digits.length == 12) {
-      return '+$digits';
-    }
-    return '+91$digits';
+    return normalized;
   }
 
   Uri _apiUri(String path) {
     final origin = Uri.base.origin;
     if (!origin.startsWith('http')) {
-      throw const OtpFailure('Twilio API is available only on web deployment.');
+      throw const OtpFailure(
+        'Email OTP API is available only on web deployment.',
+      );
     }
     return Uri.parse('$origin/api/$path');
   }
 
-  Future<void> _sendViaTwilioVerify(String phone) async {
+  Future<void> _sendViaEmailOtpService(String email) async {
     final response = await http
         .post(
-          _apiUri('send_otp'),
+          _apiUri('send_email_otp'),
           headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'phone': phone}),
+          body: jsonEncode({'email': email}),
         )
         .timeout(const Duration(seconds: 12));
     final data = _decodeResponse(response);
@@ -261,18 +259,18 @@ class JeevanArogyaRepository {
         data['ok'] != true) {
       throw OtpFailure(
         _cleanOtpMessage(
-          data['error']?.toString() ?? 'Twilio OTP send failed.',
+          data['error']?.toString() ?? 'Email OTP send failed.',
         ),
       );
     }
   }
 
-  Future<void> _verifyViaTwilioVerify(String phone, String token) async {
+  Future<void> _verifyViaEmailOtpService(String email, String token) async {
     final response = await http
         .post(
-          _apiUri('verify_otp'),
+          _apiUri('verify_email_otp'),
           headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'phone': phone, 'code': token.replaceAll(' ', '')}),
+          body: jsonEncode({'email': email, 'code': token.replaceAll(' ', '')}),
         )
         .timeout(const Duration(seconds: 12));
     final data = _decodeResponse(response);
@@ -314,19 +312,20 @@ class JeevanArogyaRepository {
       'Exception:',
       'StateError:',
       'TwilioApiError:',
+      'EmailOtpServiceError:',
     ]) {
       if (cleaned.toLowerCase().startsWith(prefix.toLowerCase())) {
         cleaned = cleaned.substring(prefix.length).trim();
       }
     }
     if (cleaned.toLowerCase() == 'invalid parameters') {
-      return 'Invalid Twilio parameters. Check TWILIO_VERIFY_SERVICE_SID starts with VA, Account SID starts with AC, Auth Token is correct, and the phone number includes country code.';
+      return 'Invalid email OTP parameters. Check EMAIL_OTP_SERVICE_URL and request payload.';
     }
     return cleaned;
   }
 }
 
-enum OtpProvider { supabase, twilioVerify }
+enum OtpProvider { supabaseEmail, githubEmailOtpService }
 
 class OtpApiUnavailable implements Exception {}
 

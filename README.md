@@ -5,7 +5,7 @@ A Flutter healthcare assistance app with a polished mobile UI, emergency SOS flo
 ## Features
 
 - Modern Flutter landing and login experience
-- Mobile OTP auth integration via Supabase and Twilio
+- Email OTP auth integration via Supabase and GitHub OTP service
 - Emergency SOS card with animated pulse effect
 - Doctor listings, appointment booking UI, hospital discovery, emergency cab UI
 - Supabase schema for profiles, doctors, appointments, SOS alerts, cab requests, and supporting data
@@ -28,9 +28,9 @@ flutter pub get
 flutter run -d chrome
 ```
 
-## Supabase Auth
+## Auth
 
-Enable Phone auth in Supabase and configure Twilio as the SMS provider.
+Enable Email auth in Supabase.
 
 For local web development, set Supabase Auth URL configuration to:
 
@@ -50,12 +50,10 @@ SUPABASE_ANON_KEY
 SUPABASE_REDIRECT_URL
 ```
 
-For direct Twilio OTP on Vercel, add these secret environment variables:
+For GitHub OTP service integration on Vercel, add this environment variable:
 
 ```text
-TWILIO_ACCOUNT_SID
-TWILIO_AUTH_TOKEN
-TWILIO_VERIFY_SERVICE_SID
+EMAIL_OTP_SERVICE_URL
 ```
 
-Create `TWILIO_VERIFY_SERVICE_SID` in Twilio Console under Verify Services. Do not put `TWILIO_AUTH_TOKEN` in Flutter code or commit it to GitHub.
+`EMAIL_OTP_SERVICE_URL` should point to your deployed instance of `sauravhathi/otp-service` (example: `https://your-otp-service.vercel.app`).
