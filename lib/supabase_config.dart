@@ -6,6 +6,7 @@ class SupabaseConfig {
   const SupabaseConfig._();
 
   static bool _ready = false;
+  static bool _envLoaded = false;
   static const _definedUrl = String.fromEnvironment('SUPABASE_URL');
   static const _definedAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
   static const _definedRedirectUrl = String.fromEnvironment(
@@ -14,18 +15,19 @@ class SupabaseConfig {
 
   static bool get isReady => _ready;
 
-  static String get url => _definedUrl.isNotEmpty
-      ? _definedUrl
-      : dotenv.maybeGet('SUPABASE_URL') ?? '';
+  static String get url =>
+      _definedUrl.isNotEmpty ? _definedUrl : _envValue('SUPABASE_URL');
 
   static String get anonKey => _definedAnonKey.isNotEmpty
       ? _definedAnonKey
-      : dotenv.maybeGet('SUPABASE_ANON_KEY') ?? '';
+      : _envValue('SUPABASE_ANON_KEY');
 
   static String get redirectUrl => _definedRedirectUrl.isNotEmpty
       ? _definedRedirectUrl
-      : dotenv.maybeGet('SUPABASE_REDIRECT_URL') ??
-            'io.supabase.jeevanarogya://login-callback/';
+      : _envValue(
+          'SUPABASE_REDIRECT_URL',
+          fallback: 'io.supabase.jeevanarogya://login-callback/',
+        );
 
   static String get oauthRedirectUrl {
     if (kIsWeb) {
@@ -35,10 +37,16 @@ class SupabaseConfig {
   }
 
   static Future<void> initialize() async {
-    try {
-      await dotenv.load(fileName: '.env');
-    } catch (_) {
-      debugPrint('No .env asset found. Checking dart-define values.');
+    if (kIsWeb) {
+      _envLoaded = false;
+    } else {
+      try {
+        await dotenv.load(fileName: '.env');
+        _envLoaded = true;
+      } catch (_) {
+        _envLoaded = false;
+        debugPrint('No .env asset found. Checking dart-define values.');
+      }
     }
 
     final hasCredentials = url.startsWith('https://') && anonKey.length > 40;
@@ -59,5 +67,12 @@ class SupabaseConfig {
       return null;
     }
     return Supabase.instance.client;
+  }
+
+  static String _envValue(String key, {String fallback = ''}) {
+    if (!_envLoaded) {
+      return fallback;
+    }
+    return dotenv.maybeGet(key) ?? fallback;
   }
 }

@@ -1,10 +1,18 @@
 import 'dart:async';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
 
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'supabase_config.dart';
 import 'supabase_models.dart';
 import 'supabase_service.dart';
+
+final appLocation = AppLocationController();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,6 +44,9 @@ class JeevanArogyaApp extends StatelessWidget {
         color: const Color(0xFFEFF4FA),
         child: LayoutBuilder(
           builder: (context, constraints) {
+            if (constraints.maxWidth >= 800) {
+              return child ?? const SizedBox.shrink();
+            }
             final width = constraints.maxWidth < 430
                 ? constraints.maxWidth
                 : 430.0;
@@ -117,17 +128,73 @@ const doctors = [
 ];
 
 const hospitals = [
-  Hospital('Apollo Hospitals', '2.4 km away', '24x7 Open'),
-  Hospital('Choithram Hospital', '3.1 km away', '24x7 Open'),
-  Hospital('Bombay Hospital', '4.2 km away', '24x7 Open'),
-  Hospital('Shalby Hospital', '4.8 km away', '24x7 Open'),
+  Hospital(
+    'Apollo Hospitals',
+    '2.4 km away',
+    '24x7 Open',
+    latitude: 22.7533,
+    longitude: 75.8922,
+    phone: '+917314738888',
+  ),
+  Hospital(
+    'Choithram Hospital',
+    '3.1 km away',
+    '24x7 Open',
+    latitude: 22.6893,
+    longitude: 75.8425,
+    phone: '+917312365001',
+  ),
+  Hospital(
+    'Bombay Hospital',
+    '4.2 km away',
+    '24x7 Open',
+    latitude: 22.7564,
+    longitude: 75.9049,
+    phone: '+917314777700',
+  ),
+  Hospital(
+    'Shalby Hospital',
+    '4.8 km away',
+    '24x7 Open',
+    latitude: 22.7679,
+    longitude: 75.8817,
+    phone: '+917314711111',
+  ),
 ];
 
 const kendras = [
-  Place('Jan Aushadhi Kendra', '1.2 km away', 'Malviya Nagar'),
-  Place('Jan Aushadhi Kendra', '2.7 km away', 'Vijay Nagar'),
-  Place('Jan Aushadhi Kendra', '3.4 km away', 'Bhawarkuan'),
-  Place('Jan Aushadhi Kendra', '4.1 km away', 'Palasia'),
+  Place(
+    'Jan Aushadhi Kendra',
+    '1.2 km away',
+    'Malviya Nagar',
+    latitude: 22.7448,
+    longitude: 75.8928,
+    phone: '+917310001201',
+  ),
+  Place(
+    'Jan Aushadhi Kendra',
+    '2.7 km away',
+    'Vijay Nagar',
+    latitude: 22.7539,
+    longitude: 75.8953,
+    phone: '+917310001202',
+  ),
+  Place(
+    'Jan Aushadhi Kendra',
+    '3.4 km away',
+    'Bhawarkuan',
+    latitude: 22.6928,
+    longitude: 75.8670,
+    phone: '+917310001203',
+  ),
+  Place(
+    'Jan Aushadhi Kendra',
+    '4.1 km away',
+    'Palasia',
+    latitude: 22.7244,
+    longitude: 75.8839,
+    phone: '+917310001204',
+  ),
 ];
 
 class Doctor {
@@ -172,19 +239,126 @@ Doctor doctorFromDb(DbDoctor doctor) {
 }
 
 class Hospital {
-  const Hospital(this.name, this.distance, this.status);
+  const Hospital(
+    this.name,
+    this.distance,
+    this.status, {
+    required this.latitude,
+    required this.longitude,
+    required this.phone,
+  });
 
   final String name;
   final String distance;
   final String status;
+  final double latitude;
+  final double longitude;
+  final String phone;
+
+  LatLng get latLng => LatLng(latitude, longitude);
+
+  String distanceFrom(LatLng userLocation) =>
+      formatDistanceKm(distanceKm(userLocation, latLng));
 }
 
 class Place {
-  const Place(this.name, this.distance, this.area);
+  const Place(
+    this.name,
+    this.distance,
+    this.area, {
+    required this.latitude,
+    required this.longitude,
+    required this.phone,
+  });
 
   final String name;
   final String distance;
   final String area;
+  final double latitude;
+  final double longitude;
+  final String phone;
+
+  LatLng get latLng => LatLng(latitude, longitude);
+
+  String distanceFrom(LatLng userLocation) =>
+      formatDistanceKm(distanceKm(userLocation, latLng));
+}
+
+class AppLocationController extends ChangeNotifier {
+  LatLng _current = const LatLng(22.7196, 75.8577);
+  String _label = 'Indore, Madhya Pradesh';
+  String? _message;
+  bool _loading = false;
+  bool _resolved = false;
+
+  LatLng get current => _current;
+  String get label => _label;
+  String? get message => _message;
+  bool get loading => _loading;
+  bool get resolved => _resolved;
+
+  Future<void> requestCurrentLocation() async {
+    _loading = true;
+    _message = null;
+    notifyListeners();
+
+    try {
+      final enabled = await Geolocator.isLocationServiceEnabled();
+      if (!enabled) {
+        _message = 'Location service off hai. Device/browser location on karo.';
+        return;
+      }
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        _message =
+            'Location permission deny hai. Browser permission allow karo.';
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 12),
+        ),
+      );
+      _current = LatLng(position.latitude, position.longitude);
+      _resolved = true;
+      _label =
+          '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
+      _message = 'Live location updated';
+    } catch (error) {
+      _message = 'Location unavailable: $error';
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
+  }
+}
+
+double distanceKm(LatLng a, LatLng b) {
+  const earthKm = 6371.0;
+  final dLat = _degToRad(b.latitude - a.latitude);
+  final dLng = _degToRad(b.longitude - a.longitude);
+  final lat1 = _degToRad(a.latitude);
+  final lat2 = _degToRad(b.latitude);
+  final h =
+      math.sin(dLat / 2) * math.sin(dLat / 2) +
+      math.cos(lat1) * math.cos(lat2) * math.sin(dLng / 2) * math.sin(dLng / 2);
+  return earthKm * 2 * math.atan2(math.sqrt(h), math.sqrt(1 - h));
+}
+
+double _degToRad(double degree) => degree * math.pi / 180;
+
+String formatDistanceKm(double km) {
+  if (km < 1) {
+    return '${(km * 1000).round()} m away';
+  }
+  return '${km.toStringAsFixed(1)} km away';
 }
 
 class AuthGate extends StatefulWidget {
@@ -260,7 +434,6 @@ class _LandingScreenState extends State<LandingScreen>
   final TextEditingController _otpController = TextEditingController();
   var _otpSent = false;
   var _otp = '4  8  2  1';
-  var _selectedCity = 'Indore';
   var _authBusy = false;
   String? _authMessage;
 
@@ -367,51 +540,6 @@ class _LandingScreenState extends State<LandingScreen>
     }
   }
 
-  Future<void> _continueWithGoogle() async {
-    setState(() {
-      _authBusy = true;
-      _authMessage = null;
-    });
-
-    try {
-      if (widget.repository.isConnected) {
-        final started = await widget.repository.signInWithGoogle();
-        if (started) {
-          setState(() {
-            _authMessage = 'Opening Gmail sign in...';
-          });
-        } else {
-          setState(() {
-            _authMessage = 'Browser blocked Gmail OAuth. Opening demo account.';
-          });
-          widget.onLogin();
-        }
-      } else {
-        setState(() {
-          _authMessage =
-              'Demo mode: add Supabase keys in .env for Gmail OAuth.';
-        });
-        widget.onLogin();
-      }
-    } catch (error) {
-      setState(() {
-        _authMessage =
-            'Gmail OAuth is not configured in Supabase yet. Opening demo.';
-      });
-      widget.onLogin();
-    } finally {
-      if (mounted) {
-        setState(() => _authBusy = false);
-      }
-    }
-  }
-
-  void _changeCity() {
-    const cities = ['Indore', 'Bhopal', 'Ujjain', 'Dewas'];
-    final current = cities.indexOf(_selectedCity);
-    setState(() => _selectedCity = cities[(current + 1) % cities.length]);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -431,7 +559,7 @@ class _LandingScreenState extends State<LandingScreen>
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
                 children: [
-                  LandingTopBar(city: _selectedCity, onCityTap: _changeCity),
+                  const LandingTopBar(),
                   const SizedBox(height: 26),
                   const LandingHero(),
                   const SizedBox(height: 24),
@@ -443,9 +571,9 @@ class _LandingScreenState extends State<LandingScreen>
                     busy: _authBusy,
                     message: _authMessage,
                     connected: widget.repository.isConnected,
+                    animation: _controller,
                     onSendOtp: _sendOtp,
                     onLogin: _verifyOtpOrEnter,
-                    onGoogleLogin: _continueWithGoogle,
                     onDemoLogin: widget.onLogin,
                   ),
                 ],
@@ -504,10 +632,7 @@ class LandingBackdropPainter extends CustomPainter {
 }
 
 class LandingTopBar extends StatelessWidget {
-  const LandingTopBar({super.key, required this.city, required this.onCityTap});
-
-  final String city;
-  final VoidCallback onCityTap;
+  const LandingTopBar({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -515,28 +640,22 @@ class LandingTopBar extends StatelessWidget {
       children: [
         const LogoMark(width: 148, height: 56),
         const Spacer(),
-        InkWell(
-          borderRadius: BorderRadius.circular(24),
-          onTap: onCityTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: .86),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.location_on_rounded,
-                  color: AppColors.red,
-                  size: 18,
-                ),
-                const SizedBox(width: 5),
-                Text(city, style: const TextStyle(fontWeight: FontWeight.w900)),
-                const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
-              ],
-            ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: .86),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.shield_rounded, color: AppColors.green, size: 18),
+              SizedBox(width: 6),
+              Text(
+                'Care network',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
+            ],
           ),
         ),
       ],
@@ -638,9 +757,9 @@ class LoginPanel extends StatelessWidget {
     required this.otp,
     required this.busy,
     required this.connected,
+    required this.animation,
     required this.onSendOtp,
     required this.onLogin,
-    required this.onGoogleLogin,
     required this.onDemoLogin,
     this.message,
   });
@@ -651,10 +770,10 @@ class LoginPanel extends StatelessWidget {
   final String otp;
   final bool busy;
   final bool connected;
+  final Animation<double> animation;
   final String? message;
   final VoidCallback onSendOtp;
   final VoidCallback onLogin;
-  final VoidCallback onGoogleLogin;
   final VoidCallback onDemoLogin;
 
   @override
@@ -681,222 +800,216 @@ class LoginPanel extends StatelessWidget {
           ),
         ],
       ),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: .84),
-          borderRadius: BorderRadius.circular(27),
-          border: Border.all(color: AppColors.line.withValues(alpha: .70)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(27),
+        child: Stack(
           children: [
-            const Center(child: LogoMark(width: 190, height: 72)),
-            const SizedBox(height: 8),
-            const Text(
-              'Welcome back',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 3),
-            const Text(
-              'Login with mobile OTP or Gmail',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: AppColors.muted,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
+            Positioned.fill(
+              child: AnimatedBuilder(
+                animation: animation,
+                builder: (context, _) {
+                  return CustomPaint(
+                    painter: LoginHealthWavePainter(animation.value),
+                  );
+                },
               ),
             ),
-            const SizedBox(height: 16),
-            AuthChoicePills(onGoogleLogin: busy ? null : onGoogleLogin),
-            const SizedBox(height: 14),
-            SupabaseStatusPill(connected: connected),
-            const SizedBox(height: 16),
-            TextField(
-              controller: phoneController,
-              keyboardType: TextInputType.phone,
-              decoration: InputDecoration(
-                prefixIcon: const Icon(
-                  Icons.phone_iphone_rounded,
-                  color: AppColors.blue,
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: .78),
+                borderRadius: BorderRadius.circular(27),
+                border: Border.all(
+                  color: AppColors.line.withValues(alpha: .70),
                 ),
-                prefixText: '+91  ',
-                hintText: 'Mobile number',
-                hintStyle: const TextStyle(
-                  color: AppColors.muted,
-                  fontWeight: FontWeight.w700,
-                ),
-                filled: true,
-                fillColor: const Color(0xFFF3F7FB),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 17,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(999),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(999),
-                  borderSide: BorderSide(color: AppColors.line),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(999),
-                  borderSide: const BorderSide(
-                    color: AppColors.blue,
-                    width: 1.4,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Center(child: LogoMark(width: 190, height: 72)),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Welcome back',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
                   ),
-                ),
-              ),
-            ),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 260),
-              child: otpSent
-                  ? Padding(
-                      key: const ValueKey('otp-visible'),
-                      padding: const EdgeInsets.only(top: 12),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: connected
-                                ? TextField(
-                                    controller: otpController,
-                                    keyboardType: TextInputType.number,
-                                    decoration: InputDecoration(
-                                      hintText: 'Enter OTP',
-                                      filled: true,
-                                      fillColor: const Color(0xFFEAF8EF),
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 18,
-                                            vertical: 17,
+                  const SizedBox(height: 3),
+                  const Text(
+                    'Login securely with mobile OTP',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  AnimatedBuilder(
+                    animation: animation,
+                    builder: (context, _) {
+                      return OtpOnlyAuthPill(progress: animation.value);
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  SupabaseStatusPill(connected: connected),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: phoneController,
+                    keyboardType: TextInputType.phone,
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(
+                        Icons.phone_iphone_rounded,
+                        color: AppColors.blue,
+                      ),
+                      prefixText: '+91  ',
+                      hintText: 'Mobile number',
+                      hintStyle: const TextStyle(
+                        color: AppColors.muted,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFFF3F7FB),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 17,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(999),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(999),
+                        borderSide: BorderSide(color: AppColors.line),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(999),
+                        borderSide: const BorderSide(
+                          color: AppColors.blue,
+                          width: 1.4,
+                        ),
+                      ),
+                    ),
+                  ),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 260),
+                    child: otpSent
+                        ? Padding(
+                            key: const ValueKey('otp-visible'),
+                            padding: const EdgeInsets.only(top: 12),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: connected
+                                      ? TextField(
+                                          controller: otpController,
+                                          keyboardType: TextInputType.number,
+                                          decoration: InputDecoration(
+                                            hintText: 'Enter OTP',
+                                            filled: true,
+                                            fillColor: const Color(0xFFEAF8EF),
+                                            contentPadding:
+                                                const EdgeInsets.symmetric(
+                                                  horizontal: 18,
+                                                  vertical: 17,
+                                                ),
+                                            border: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(999),
+                                              borderSide: BorderSide.none,
+                                            ),
+                                            enabledBorder: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(999),
+                                              borderSide: BorderSide(
+                                                color: AppColors.green
+                                                    .withValues(alpha: .22),
+                                              ),
+                                            ),
                                           ),
-                                      border: OutlineInputBorder(
+                                        )
+                                      : Container(
+                                          height: 54,
+                                          alignment: Alignment.center,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFEAF8EF),
+                                            borderRadius: BorderRadius.circular(
+                                              999,
+                                            ),
+                                            border: Border.all(
+                                              color: AppColors.green.withValues(
+                                                alpha: .24,
+                                              ),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            otp,
+                                            style: const TextStyle(
+                                              color: AppColors.green,
+                                              fontSize: 20,
+                                              letterSpacing: 3,
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
+                                        ),
+                                ),
+                                const SizedBox(width: 10),
+                                SizedBox(
+                                  height: 54,
+                                  child: FilledButton(
+                                    onPressed: busy ? null : onLogin,
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: AppColors.green,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 18,
+                                      ),
+                                      shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(
                                           999,
-                                        ),
-                                        borderSide: BorderSide.none,
-                                      ),
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(
-                                          999,
-                                        ),
-                                        borderSide: BorderSide(
-                                          color: AppColors.green.withValues(
-                                            alpha: .22,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                : Container(
-                                    height: 54,
-                                    alignment: Alignment.center,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFEAF8EF),
-                                      borderRadius: BorderRadius.circular(999),
-                                      border: Border.all(
-                                        color: AppColors.green.withValues(
-                                          alpha: .24,
                                         ),
                                       ),
                                     ),
                                     child: Text(
-                                      otp,
+                                      connected ? 'Verify' : 'Open',
                                       style: const TextStyle(
-                                        color: AppColors.green,
-                                        fontSize: 20,
-                                        letterSpacing: 3,
                                         fontWeight: FontWeight.w900,
                                       ),
                                     ),
                                   ),
-                          ),
-                          const SizedBox(width: 10),
-                          SizedBox(
-                            height: 54,
-                            child: FilledButton(
-                              onPressed: busy ? null : onLogin,
-                              style: FilledButton.styleFrom(
-                                backgroundColor: AppColors.green,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 18,
                                 ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                              ),
-                              child: Text(
-                                connected ? 'Verify' : 'Open',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
+                              ],
                             ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : const SizedBox.shrink(key: ValueKey('otp-hidden')),
-            ),
-            if (message != null) ...[
-              const SizedBox(height: 10),
-              Text(
-                message!,
-                style: TextStyle(
-                  color: connected ? AppColors.green : AppColors.muted,
-                  fontSize: 12,
-                  height: 1.3,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-            const SizedBox(height: 14),
-            PillActionButton(
-              label: busy
-                  ? 'Please wait...'
-                  : (otpSent ? 'Enter App' : 'Send OTP'),
-              icon: otpSent ? Icons.login_rounded : Icons.sms_rounded,
-              onTap: busy ? null : (otpSent ? onLogin : onSendOtp),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: busy ? null : onGoogleLogin,
-              icon: Container(
-                width: 28,
-                height: 28,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.line),
-                ),
-                child: const Text(
-                  'G',
-                  style: TextStyle(
-                    color: AppColors.red,
-                    fontWeight: FontWeight.w900,
+                          )
+                        : const SizedBox.shrink(key: ValueKey('otp-hidden')),
                   ),
-                ),
-              ),
-              label: const Text('Continue with Gmail'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.text,
-                minimumSize: const Size.fromHeight(54),
-                side: const BorderSide(color: AppColors.line),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                textStyle: const TextStyle(fontWeight: FontWeight.w900),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Center(
-              child: TextButton(
-                onPressed: busy ? null : onDemoLogin,
-                child: const Text('Explore demo without login'),
+                  if (message != null) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      message!,
+                      style: TextStyle(
+                        color: connected ? AppColors.green : AppColors.muted,
+                        fontSize: 12,
+                        height: 1.3,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 14),
+                  PillActionButton(
+                    label: busy
+                        ? 'Please wait...'
+                        : (otpSent ? 'Enter App' : 'Send OTP'),
+                    icon: otpSent ? Icons.login_rounded : Icons.sms_rounded,
+                    onTap: busy ? null : (otpSent ? onLogin : onSendOtp),
+                  ),
+                  const SizedBox(height: 12),
+                  Center(
+                    child: TextButton(
+                      onPressed: busy ? null : onDemoLogin,
+                      child: const Text('Explore demo without login'),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -906,10 +1019,10 @@ class LoginPanel extends StatelessWidget {
   }
 }
 
-class AuthChoicePills extends StatelessWidget {
-  const AuthChoicePills({super.key, this.onGoogleLogin});
+class OtpOnlyAuthPill extends StatelessWidget {
+  const OtpOnlyAuthPill({super.key, required this.progress});
 
-  final VoidCallback? onGoogleLogin;
+  final double progress;
 
   @override
   Widget build(BuildContext context) {
@@ -921,21 +1034,60 @@ class AuthChoicePills extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: AppColors.line),
       ),
-      child: Row(
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
         children: [
-          const Expanded(
-            child: _AuthChoicePill(
-              icon: Icons.phone_iphone_rounded,
-              label: 'Mobile',
-              selected: true,
+          Positioned.fill(
+            child: FractionalTranslation(
+              translation: Offset(-1.25 + progress * 2.5, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  width: 110,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.transparent,
+                        Colors.white.withValues(alpha: .46),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
-          Expanded(
-            child: _AuthChoicePill(
-              icon: Icons.mail_rounded,
-              label: 'Gmail',
-              selected: false,
-              onTap: onGoogleLogin,
+          Container(
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.navy,
+              borderRadius: BorderRadius.circular(999),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.navy.withValues(alpha: .18),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.phone_iphone_rounded, size: 17, color: Colors.white),
+                SizedBox(width: 7),
+                Flexible(
+                  child: Text(
+                    'Mobile OTP Login',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -944,66 +1096,57 @@ class AuthChoicePills extends StatelessWidget {
   }
 }
 
-class _AuthChoicePill extends StatelessWidget {
-  const _AuthChoicePill({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    this.onTap,
-  });
+class LoginHealthWavePainter extends CustomPainter {
+  const LoginHealthWavePainter(this.t);
 
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback? onTap;
+  final double t;
 
   @override
-  Widget build(BuildContext context) {
-    final content = Container(
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: selected ? AppColors.navy : Colors.transparent,
-        borderRadius: BorderRadius.circular(999),
-        boxShadow: selected
-            ? [
-                BoxShadow(
-                  color: AppColors.navy.withValues(alpha: .18),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
-                ),
-              ]
-            : null,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            size: 17,
-            color: selected ? Colors.white : AppColors.muted,
-          ),
-          const SizedBox(width: 7),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: selected ? Colors.white : AppColors.text,
-                fontWeight: FontWeight.w900,
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  void paint(Canvas canvas, Size size) {
+    final softWash = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFFFFFFFF), Color(0xFFF1FAFF), Color(0xFFFFF2F5)],
+      ).createShader(Offset.zero & size);
+    canvas.drawRect(Offset.zero & size, softWash);
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(999),
-      onTap: onTap,
-      child: content,
+    for (var i = 0; i < 3; i++) {
+      final phase = (t + i * .22) % 1;
+      final y = size.height * (.18 + i * .23);
+      final path = ui.Path()..moveTo(-40, y);
+      for (double x = -40; x <= size.width + 40; x += 18) {
+        final wave = math.sin(
+          (x / size.width * math.pi * 2.2) + phase * math.pi * 2,
+        );
+        path.lineTo(x, y + wave * (10 + i * 2));
+      }
+      final paint = Paint()
+        ..color = [
+          AppColors.blue,
+          AppColors.green,
+          AppColors.red,
+        ][i].withValues(alpha: .055)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 10
+        ..strokeCap = StrokeCap.round
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+      canvas.drawPath(path, paint);
+    }
+
+    final glow = Paint()
+      ..color = AppColors.green.withValues(alpha: .07)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 28);
+    canvas.drawCircle(
+      Offset(size.width * (.18 + t * .10), size.height * .24),
+      54,
+      glow,
     );
+  }
+
+  @override
+  bool shouldRepaint(covariant LoginHealthWavePainter oldDelegate) {
+    return oldDelegate.t != t;
   }
 }
 
@@ -1196,20 +1339,117 @@ class _AppShellState extends State<AppShell> {
       const ProfileScreen(),
     ];
 
-    return Scaffold(
-      body: IndexedStack(index: _index == 2 ? 0 : _index, children: pages),
-      bottomNavigationBar: JeevanNavBar(
-        selectedIndex: _index,
-        onChanged: (value) {
-          if (value == 2) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const EmergencySosScreen()),
-            );
-            return;
-          }
-          setState(() => _index = value);
-        },
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 900;
+        return Scaffold(
+          body: Row(
+            children: [
+              if (wide)
+                DesktopRail(selectedIndex: _index, onChanged: _handleTabChange),
+              Expanded(
+                child: IndexedStack(
+                  index: _index == 2 ? 0 : _index,
+                  children: pages,
+                ),
+              ),
+            ],
+          ),
+          bottomNavigationBar: wide
+              ? null
+              : JeevanNavBar(
+                  selectedIndex: _index,
+                  onChanged: _handleTabChange,
+                ),
+        );
+      },
+    );
+  }
+
+  void _handleTabChange(int value) {
+    if (value == 2) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const EmergencySosScreen()),
+      );
+      return;
+    }
+    setState(() => _index = value);
+  }
+}
+
+class DesktopRail extends StatelessWidget {
+  const DesktopRail({
+    super.key,
+    required this.selectedIndex,
+    required this.onChanged,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 236,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(right: BorderSide(color: AppColors.line)),
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(18, 20, 18, 26),
+              child: LogoMark(width: 184, height: 70),
+            ),
+            Expanded(
+              child: NavigationRail(
+                extended: true,
+                selectedIndex: selectedIndex,
+                onDestinationSelected: onChanged,
+                backgroundColor: Colors.white,
+                indicatorColor: AppColors.navy,
+                selectedIconTheme: const IconThemeData(color: Colors.white),
+                selectedLabelTextStyle: const TextStyle(
+                  color: AppColors.navy,
+                  fontWeight: FontWeight.w900,
+                ),
+                unselectedLabelTextStyle: const TextStyle(
+                  color: AppColors.muted,
+                  fontWeight: FontWeight.w700,
+                ),
+                destinations: const [
+                  NavigationRailDestination(
+                    icon: Icon(Icons.home_outlined),
+                    selectedIcon: Icon(Icons.home_rounded),
+                    label: Text('Home'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.calendar_today_outlined),
+                    selectedIcon: Icon(Icons.calendar_month_rounded),
+                    label: Text('Appointments'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.sos_rounded),
+                    selectedIcon: Icon(Icons.sos_rounded),
+                    label: Text('SOS'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.chat_bubble_outline_rounded),
+                    selectedIcon: Icon(Icons.chat_bubble_rounded),
+                    label: Text('Messages'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.person_outline_rounded),
+                    selectedIcon: Icon(Icons.person_rounded),
+                    label: Text('Profile'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1307,7 +1547,12 @@ class HomeScreen extends StatelessWidget {
                 title: 'Health Records',
                 subtitle: 'Your medical info',
                 color: const Color(0xFF7D75FF),
-                onTap: () {},
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const HealthRecordsScreen(),
+                  ),
+                ),
               ),
             ],
           ),
@@ -1321,10 +1566,187 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          for (final hospital in hospitals.take(2))
-            HospitalMiniCard(hospital: hospital, compact: true),
+          AnimatedBuilder(
+            animation: appLocation,
+            builder: (context, _) {
+              final nearby = [...hospitals]
+                ..sort(
+                  (a, b) => distanceKm(
+                    appLocation.current,
+                    a.latLng,
+                  ).compareTo(distanceKm(appLocation.current, b.latLng)),
+                );
+              return Column(
+                children: [
+                  for (final hospital in nearby.take(2))
+                    HospitalMiniCard(hospital: hospital, compact: true),
+                ],
+              );
+            },
+          ),
         ],
       ),
+    );
+  }
+}
+
+class LocationInsightCard extends StatelessWidget {
+  const LocationInsightCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: appLocation,
+      builder: (context, _) {
+        final nearestHospital = [...hospitals]
+          ..sort(
+            (a, b) => distanceKm(
+              appLocation.current,
+              a.latLng,
+            ).compareTo(distanceKm(appLocation.current, b.latLng)),
+          );
+        final hospital = nearestHospital.first;
+        return AppCard(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.blue.withValues(alpha: .11),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(
+                  Icons.my_location_rounded,
+                  color: AppColors.blue,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      appLocation.resolved
+                          ? 'Using your live location'
+                          : 'Location based care',
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${hospital.name} - ${hospital.distanceFrom(appLocation.current)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (appLocation.message != null) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        appLocation.message!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.green,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              TextButton.icon(
+                onPressed: appLocation.loading
+                    ? null
+                    : appLocation.requestCurrentLocation,
+                icon: appLocation.loading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.gps_fixed_rounded, size: 17),
+                label: Text(appLocation.loading ? 'Locating' : 'Use GPS'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class DoctorLocationPrompt extends StatelessWidget {
+  const DoctorLocationPrompt({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: appLocation,
+      builder: (context, _) {
+        return AppCard(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppColors.green.withValues(alpha: .11),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: const Icon(
+                  Icons.medical_information_rounded,
+                  color: AppColors.green,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Doctors near your area',
+                      style: TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      appLocation.resolved
+                          ? 'Using ${appLocation.label}'
+                          : 'Use GPS to personalize doctor availability',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton.icon(
+                onPressed: appLocation.loading
+                    ? null
+                    : appLocation.requestCurrentLocation,
+                icon: appLocation.loading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.gps_fixed_rounded, size: 17),
+                label: Text(appLocation.loading ? 'GPS...' : 'GPS'),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -1345,6 +1767,8 @@ class FindDoctorsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             const SearchBox(hint: 'Search by name, specialization...'),
+            const SizedBox(height: 12),
+            const DoctorLocationPrompt(),
             const SizedBox(height: 16),
             const CategoryChips(
               labels: [
@@ -1785,8 +2209,27 @@ class NearbyHospitalsScreen extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 26),
                 children: [
-                  for (final hospital in hospitals)
-                    HospitalMiniCard(hospital: hospital, compact: false),
+                  AnimatedBuilder(
+                    animation: appLocation,
+                    builder: (context, _) {
+                      final nearby = [...hospitals]
+                        ..sort(
+                          (a, b) => distanceKm(appLocation.current, a.latLng)
+                              .compareTo(
+                                distanceKm(appLocation.current, b.latLng),
+                              ),
+                        );
+                      return Column(
+                        children: [
+                          for (final hospital in nearby)
+                            HospitalMiniCard(
+                              hospital: hospital,
+                              compact: false,
+                            ),
+                        ],
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
@@ -1847,6 +2290,110 @@ class HealthSchemesScreen extends StatelessWidget {
   }
 }
 
+class HealthRecordsScreen extends StatelessWidget {
+  const HealthRecordsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    const records = [
+      ('Blood Report', 'CBC and lipid profile - uploaded today'),
+      ('Prescription', 'Dr. Ananya Sharma - Atorvastatin 10mg'),
+      ('Allergy', 'Penicillin sensitivity marked as important'),
+      ('Vaccination', 'Tetanus booster due in 2027'),
+    ];
+
+    return Scaffold(
+      body: AppPage(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+          children: [
+            const TopBar(title: 'Health Records'),
+            const SizedBox(height: 18),
+            AppCard(
+              padding: const EdgeInsets.all(18),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.blue.withValues(alpha: .11),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: const Icon(
+                      Icons.folder_copy_rounded,
+                      color: AppColors.blue,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Priya Sharma',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          '4 verified records stored locally for demo.',
+                          style: TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            for (final record in records)
+              AppCard(
+                margin: const EdgeInsets.only(bottom: 12),
+                onTap: () => ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text('${record.$1} opened'))),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.description_rounded,
+                      color: AppColors.navy,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            record.$1,
+                            style: const TextStyle(fontWeight: FontWeight.w900),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            record.$2,
+                            style: const TextStyle(
+                              color: AppColors.muted,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right_rounded),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class JanAushadhiScreen extends StatelessWidget {
   const JanAushadhiScreen({super.key});
 
@@ -1870,7 +2417,24 @@ class JanAushadhiScreen extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 26),
                 children: [
-                  for (final kendra in kendras) KendraCard(place: kendra),
+                  AnimatedBuilder(
+                    animation: appLocation,
+                    builder: (context, _) {
+                      final nearby = [...kendras]
+                        ..sort(
+                          (a, b) => distanceKm(appLocation.current, a.latLng)
+                              .compareTo(
+                                distanceKm(appLocation.current, b.latLng),
+                              ),
+                        );
+                      return Column(
+                        children: [
+                          for (final kendra in nearby)
+                            KendraCard(place: kendra),
+                        ],
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
@@ -1937,65 +2501,192 @@ class ProfileScreen extends StatelessWidget {
     return AppPage(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 112),
-        children: const [
-          TopBar(
+        children: [
+          const TopBar(
             title: 'Profile',
             showBack: false,
             trailingIcon: Icons.settings_outlined,
           ),
-          SizedBox(height: 18),
-          ProfileHeaderCard(),
-          SizedBox(height: 24),
-          Text(
+          const SizedBox(height: 18),
+          const ProfileHeaderCard(),
+          const SizedBox(height: 24),
+          const Text(
             'My Health',
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
           ),
-          SizedBox(height: 10),
+          const SizedBox(height: 10),
           ProfileMenuItem(
             icon: Icons.description_outlined,
             title: 'Health Records',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const HealthRecordsScreen()),
+            ),
           ),
           ProfileMenuItem(
             icon: Icons.medical_information_outlined,
             title: 'Prescriptions',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const SimpleInfoScreen(
+                  title: 'Prescriptions',
+                  lines: [
+                    'Atorvastatin 10mg - once daily',
+                    'Vitamin D3 - weekly',
+                    'ORS sachets - as needed',
+                  ],
+                ),
+              ),
+            ),
           ),
           ProfileMenuItem(
             icon: Icons.sick_outlined,
             title: 'Allergies & Conditions',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const SimpleInfoScreen(
+                  title: 'Allergies & Conditions',
+                  lines: [
+                    'Penicillin allergy',
+                    'Mild seasonal asthma',
+                    'No active critical conditions',
+                  ],
+                ),
+              ),
+            ),
           ),
           ProfileMenuItem(
             icon: Icons.shield_outlined,
             title: 'Vital Health Info',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const SimpleInfoScreen(
+                  title: 'Vital Health Info',
+                  lines: ['Blood group: B+', 'Pulse: 76 bpm', 'SpO2: 98%'],
+                ),
+              ),
+            ),
           ),
-          SizedBox(height: 24),
-          Text(
+          const SizedBox(height: 24),
+          const Text(
             'My Account',
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
           ),
-          SizedBox(height: 10),
+          const SizedBox(height: 10),
           ProfileMenuItem(
             icon: Icons.groups_2_outlined,
             title: 'Emergency Contacts',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const SimpleInfoScreen(
+                  title: 'Emergency Contacts',
+                  lines: [
+                    'Rohit Sharma - Father - +91 98765 00001',
+                    'Neha Sharma - Sister - +91 98765 00002',
+                    'Local ambulance - 108',
+                  ],
+                ),
+              ),
+            ),
           ),
           ProfileMenuItem(
             icon: Icons.location_on_outlined,
             title: 'Address Book',
+            onTap: appLocation.requestCurrentLocation,
           ),
           ProfileMenuItem(
             icon: Icons.notifications_none_rounded,
             title: 'Notification Settings',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const SimpleInfoScreen(
+                  title: 'Notification Settings',
+                  lines: [
+                    'SOS alerts enabled',
+                    'Appointment reminders enabled',
+                    'Medicine refill reminders enabled',
+                  ],
+                ),
+              ),
+            ),
           ),
           ProfileMenuItem(
             icon: Icons.help_outline_rounded,
             title: 'Help & Support',
+            onTap: () => callPhone(context, '+91108'),
           ),
-          ProfileMenuItem(icon: Icons.info_outline_rounded, title: 'About Us'),
+          ProfileMenuItem(
+            icon: Icons.info_outline_rounded,
+            title: 'About Us',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const SimpleInfoScreen(
+                  title: 'About Us',
+                  lines: [
+                    'Jeevan Arogya connects patients to nearby care.',
+                    'Maps use OpenStreetMap tiles.',
+                    'Supabase powers auth and live database features.',
+                  ],
+                ),
+              ),
+            ),
+          ),
           ProfileMenuItem(
             icon: Icons.logout_rounded,
             title: 'Logout',
             danger: true,
+            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Logged out in demo mode.')),
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class SimpleInfoScreen extends StatelessWidget {
+  const SimpleInfoScreen({super.key, required this.title, required this.lines});
+
+  final String title;
+  final List<String> lines;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: AppPage(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+          children: [
+            TopBar(title: title),
+            const SizedBox(height: 18),
+            for (final line in lines)
+              AppCard(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      color: AppColors.green,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        line,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -2017,7 +2708,12 @@ class AppPage extends StatelessWidget {
             colors: [Colors.white, AppColors.bg],
           ),
         ),
-        child: child,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1180),
+            child: child,
+          ),
+        ),
       ),
     );
   }
@@ -2030,11 +2726,32 @@ class HomeHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        CircleIcon(icon: Icons.menu_rounded, onTap: () {}),
+        CircleIcon(
+          icon: Icons.menu_rounded,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ProfileScreen()),
+          ),
+        ),
         const Spacer(),
         const LogoMark(width: 136, height: 52),
         const Spacer(),
-        CircleIcon(icon: Icons.notifications_none_rounded, onTap: () {}),
+        CircleIcon(
+          icon: Icons.notifications_none_rounded,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const SimpleInfoScreen(
+                title: 'Notifications',
+                lines: [
+                  'Appointment reminder: Today 11:30 AM',
+                  'Nearest hospital list updated',
+                  'Medicine refill reminder is active',
+                ],
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -3004,6 +3721,12 @@ class SosPulseButton extends StatelessWidget {
   }
 
   Future<void> _saveSos(BuildContext context) async {
+    if (!appLocation.resolved && !appLocation.loading) {
+      await appLocation.requestCurrentLocation();
+    }
+    if (!context.mounted) {
+      return;
+    }
     final repository = JeevanArogyaRepository();
     if (!repository.isConnected) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -3017,7 +3740,10 @@ class SosPulseButton extends StatelessWidget {
     }
 
     try {
-      await repository.createSosAlert(latitude: 22.7501, longitude: 75.8931);
+      await repository.createSosAlert(
+        latitude: appLocation.current.latitude,
+        longitude: appLocation.current.longitude,
+      );
       if (!context.mounted) {
         return;
       }
@@ -3040,31 +3766,54 @@ class LocationSharingPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: .18),
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.location_on_rounded, color: Colors.white, size: 18),
-            SizedBox(width: 7),
-            Text(
-              'Sharing your location live',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
+    return AnimatedBuilder(
+      animation: appLocation,
+      builder: (context, _) {
+        return Center(
+          child: InkWell(
+            borderRadius: BorderRadius.circular(24),
+            onTap: appLocation.loading
+                ? null
+                : appLocation.requestCurrentLocation,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: .18),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.location_on_rounded,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 7),
+                  Text(
+                    appLocation.resolved
+                        ? 'Live: ${appLocation.label}'
+                        : 'Tap to share live location',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Icon(
+                    appLocation.loading
+                        ? Icons.sync_rounded
+                        : Icons.sensors_rounded,
+                    color: Colors.white,
+                    size: 17,
+                  ),
+                ],
               ),
             ),
-            SizedBox(width: 6),
-            Icon(Icons.sensors_rounded, color: Colors.white, size: 17),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -3169,217 +3918,209 @@ class MapPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(color: Color(0xFFEFF3F6)),
-      child: CustomPaint(
-        painter: MapPainter(mode),
-        child: Stack(
-          children: [
-            if (mode == MapMode.route) ...const [
-              MapPin(alignment: Alignment(0.15, -0.72), color: AppColors.red),
-              MapPin(
-                alignment: Alignment(-0.04, 0.26),
-                color: AppColors.blue,
-                isUser: true,
+    return AnimatedBuilder(
+      animation: appLocation,
+      builder: (context, _) {
+        final user = appLocation.current;
+        final destination = switch (mode) {
+          MapMode.route => hospitals.first.latLng,
+          MapMode.hospitals => hospitals.first.latLng,
+          MapMode.kendras => kendras.first.latLng,
+        };
+        final markers = <Marker>[
+          Marker(
+            point: user,
+            width: 54,
+            height: 54,
+            child: const MapBubble(
+              color: AppColors.blue,
+              icon: Icons.my_location_rounded,
+              label: 'You',
+            ),
+          ),
+          if (mode == MapMode.hospitals || mode == MapMode.route)
+            for (final hospital in hospitals)
+              Marker(
+                point: hospital.latLng,
+                width: 60,
+                height: 60,
+                child: MapBubble(
+                  color: AppColors.red,
+                  icon: Icons.local_hospital_rounded,
+                  label: hospital.distanceFrom(user),
+                ),
               ),
-              MapCar(alignment: Alignment(-0.65, -0.08)),
-              MapCar(alignment: Alignment(0.58, 0.0)),
-              MapCar(alignment: Alignment(0.35, 0.45)),
+          if (mode == MapMode.kendras)
+            for (final kendra in kendras)
+              Marker(
+                point: kendra.latLng,
+                width: 60,
+                height: 60,
+                child: MapBubble(
+                  color: AppColors.green,
+                  icon: Icons.medication_liquid_rounded,
+                  label: kendra.distanceFrom(user),
+                ),
+              ),
+        ];
+
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: Stack(
+            children: [
+              FlutterMap(
+                key: ValueKey(
+                  '${mode.name}-${user.latitude.toStringAsFixed(4)}-${user.longitude.toStringAsFixed(4)}',
+                ),
+                options: MapOptions(
+                  initialCenter: mode == MapMode.route
+                      ? LatLng(
+                          (user.latitude + destination.latitude) / 2,
+                          (user.longitude + destination.longitude) / 2,
+                        )
+                      : user,
+                  initialZoom: mode == MapMode.route ? 13.0 : 13.5,
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.gravitymeet.gravitymeet',
+                  ),
+                  if (mode == MapMode.route)
+                    PolylineLayer(
+                      polylines: [
+                        Polyline(
+                          points: [user, destination],
+                          color: AppColors.navy,
+                          strokeWidth: 5,
+                        ),
+                      ],
+                    ),
+                  MarkerLayer(markers: markers),
+                ],
+              ),
+              Positioned(
+                left: 12,
+                right: 12,
+                top: 12,
+                child: MapLocationToolbar(mode: mode),
+              ),
             ],
-            if (mode == MapMode.hospitals) ...const [
-              MapPin(alignment: Alignment(-0.65, -0.45), color: AppColors.red),
-              MapPin(alignment: Alignment(0.58, -0.54), color: AppColors.red),
-              MapPin(alignment: Alignment(0.25, 0.2), color: AppColors.red),
-              MapPin(
-                alignment: Alignment(-0.05, -0.05),
-                color: AppColors.blue,
-                isUser: true,
-              ),
-            ],
-            if (mode == MapMode.kendras) ...const [
-              MapPin(
-                alignment: Alignment(-0.48, -0.58),
-                color: AppColors.green,
-              ),
-              MapPin(alignment: Alignment(0.5, -0.46), color: AppColors.green),
-              MapPin(alignment: Alignment(0.2, 0.15), color: AppColors.green),
-              MapPin(
-                alignment: Alignment(-0.1, -0.03),
-                color: AppColors.blue,
-                isUser: true,
-              ),
-            ],
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
 
-class MapPainter extends CustomPainter {
-  const MapPainter(this.mode);
+class MapLocationToolbar extends StatelessWidget {
+  const MapLocationToolbar({super.key, required this.mode});
 
   final MapMode mode;
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final road = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 8
-      ..strokeCap = StrokeCap.round;
-    final thinRoad = Paint()
-      ..color = const Color(0xFFDDE5EE)
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
-    final route = Paint()
-      ..color = AppColors.navy
-      ..strokeWidth = 6
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-    final green = Paint()
-      ..color = const Color(0xFFD9EEDC)
-      ..style = PaintingStyle.fill;
-
-    canvas.drawRect(
-      Rect.fromLTWH(
-        size.width * .08,
-        size.height * .12,
-        size.width * .3,
-        size.height * .16,
-      ),
-      green,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(
-        size.width * .62,
-        size.height * .45,
-        size.width * .24,
-        size.height * .18,
-      ),
-      green,
-    );
-
-    for (var i = 0; i < 6; i++) {
-      final y = size.height * (.14 + i * .14);
-      canvas.drawLine(Offset(0, y), Offset(size.width, y + 34), road);
-      canvas.drawLine(Offset(0, y), Offset(size.width, y + 34), thinRoad);
-    }
-    for (var i = 0; i < 4; i++) {
-      final x = size.width * (.18 + i * .22);
-      canvas.drawLine(Offset(x, 0), Offset(x - 40, size.height), road);
-      canvas.drawLine(Offset(x, 0), Offset(x - 40, size.height), thinRoad);
-    }
-
-    if (mode == MapMode.route) {
-      final path = Path()
-        ..moveTo(size.width * .49, size.height * .69)
-        ..lineTo(size.width * .49, size.height * .56)
-        ..quadraticBezierTo(
-          size.width * .48,
-          size.height * .40,
-          size.width * .38,
-          size.height * .30,
-        )
-        ..lineTo(size.width * .38, size.height * .20)
-        ..lineTo(size.width * .54, size.height * .09);
-      canvas.drawPath(path, route);
-    }
-
-    final labelPaint = TextPainter(
-      textDirection: TextDirection.ltr,
-      text: TextSpan(
-        text: mode == MapMode.route ? 'MALVIYA\nNAGAR' : 'INDORE',
-        style: TextStyle(
-          color: AppColors.muted.withValues(alpha: .65),
-          fontSize: 13,
-          letterSpacing: 2,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    )..layout();
-    labelPaint.paint(canvas, Offset(size.width * .13, size.height * .55));
-  }
-
-  @override
-  bool shouldRepaint(covariant MapPainter oldDelegate) =>
-      oldDelegate.mode != mode;
-}
-
-class MapPin extends StatelessWidget {
-  const MapPin({
-    super.key,
-    required this.alignment,
-    required this.color,
-    this.isUser = false,
-  });
-
-  final Alignment alignment;
-  final Color color;
-  final bool isUser;
-
-  @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: alignment,
-      child: Container(
-        width: isUser ? 24 : 26,
-        height: isUser ? 24 : 26,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white, width: 4),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: .28),
-              blurRadius: 10,
-              spreadRadius: 2,
+    final title = switch (mode) {
+      MapMode.route => 'Live emergency route',
+      MapMode.hospitals => 'Hospitals near you',
+      MapMode.kendras => 'Jan Aushadhi near you',
+    };
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: .92),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: .08),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          children: [
+            const Icon(Icons.map_rounded, color: AppColors.blue, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            TextButton.icon(
+              onPressed: appLocation.loading
+                  ? null
+                  : appLocation.requestCurrentLocation,
+              icon: const Icon(Icons.gps_fixed_rounded, size: 16),
+              label: const Text('GPS'),
             ),
           ],
         ),
-        child: isUser
-            ? null
-            : const Icon(
-                Icons.location_on_rounded,
-                color: Colors.white,
-                size: 13,
-              ),
       ),
     );
   }
 }
 
-class MapCar extends StatelessWidget {
-  const MapCar({super.key, required this.alignment});
+class MapBubble extends StatelessWidget {
+  const MapBubble({
+    super.key,
+    required this.color,
+    required this.icon,
+    required this.label,
+  });
 
-  final Alignment alignment;
+  final Color color;
+  final IconData icon;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: alignment,
-      child: Transform.rotate(
-        angle: .25,
-        child: Container(
-          width: 30,
-          height: 18,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(9),
+            color: color,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 3),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: .12),
-                blurRadius: 6,
+                color: color.withValues(alpha: .35),
+                blurRadius: 12,
+                spreadRadius: 2,
               ),
             ],
           ),
-          child: const Icon(
-            Icons.local_taxi_rounded,
-            color: AppColors.text,
-            size: 15,
+          child: Icon(icon, color: Colors.white, size: 17),
+        ),
+        const SizedBox(height: 2),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(9),
+          ),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.text,
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 }
@@ -3389,64 +4130,94 @@ class EmergencyRideCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Confirm Emergency Ride',
-            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 18),
-          const RouteRow(
-            color: AppColors.blue,
-            title: 'Pickup Location',
-            subtitle: 'Malviya Nagar, Indore',
-          ),
-          const RouteRow(
-            color: AppColors.red,
-            title: 'Drop Location',
-            subtitle: 'Apollo Hospitals, Indore',
-          ),
-          const SizedBox(height: 8),
-          const Row(
+    return AnimatedBuilder(
+      animation: appLocation,
+      builder: (context, _) {
+        final nearest = [...hospitals]
+          ..sort(
+            (a, b) => distanceKm(
+              appLocation.current,
+              a.latLng,
+            ).compareTo(distanceKm(appLocation.current, b.latLng)),
+          );
+        final hospital = nearest.first;
+        return AppCard(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: RideInfo(
-                  icon: Icons.local_taxi_rounded,
-                  title: 'Ride Type',
-                  value: 'Hatchback',
-                ),
+              const Text(
+                'Confirm Emergency Ride',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
               ),
-              SizedBox(width: 10),
-              Expanded(
-                child: RideInfo(
-                  icon: Icons.payments_outlined,
-                  title: 'Payment Method',
-                  value: 'Cash',
+              const SizedBox(height: 18),
+              RouteRow(
+                color: AppColors.blue,
+                title: 'Pickup Location',
+                subtitle: appLocation.resolved
+                    ? appLocation.label
+                    : 'Use GPS for current location',
+              ),
+              RouteRow(
+                color: AppColors.red,
+                title: 'Drop Location',
+                subtitle:
+                    '${hospital.name} (${hospital.distanceFrom(appLocation.current)})',
+              ),
+              const SizedBox(height: 8),
+              const Row(
+                children: [
+                  Expanded(
+                    child: RideInfo(
+                      icon: Icons.local_taxi_rounded,
+                      title: 'Ride Type',
+                      value: 'Hatchback',
+                    ),
+                  ),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: RideInfo(
+                      icon: Icons.payments_outlined,
+                      title: 'Payment Method',
+                      value: 'Cash',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              PrimaryButton(
+                label: 'Request Emergency Cab',
+                onTap: () => _requestCab(context),
+              ),
+              const SizedBox(height: 12),
+              const Center(
+                child: Text(
+                  'Drivers will be notified about the emergency',
+                  style: TextStyle(color: AppColors.muted, fontSize: 12),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 18),
-          PrimaryButton(
-            label: 'Request Emergency Cab',
-            onTap: () => _requestCab(context),
-          ),
-          const SizedBox(height: 12),
-          const Center(
-            child: Text(
-              'Drivers will be notified about the emergency',
-              style: TextStyle(color: AppColors.muted, fontSize: 12),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Future<void> _requestCab(BuildContext context) async {
+    if (!appLocation.resolved && !appLocation.loading) {
+      await appLocation.requestCurrentLocation();
+    }
+    if (!context.mounted) {
+      return;
+    }
+    final nearest = [...hospitals]
+      ..sort(
+        (a, b) => distanceKm(
+          appLocation.current,
+          a.latLng,
+        ).compareTo(distanceKm(appLocation.current, b.latLng)),
+      );
+    final hospital = nearest.first;
     final repository = JeevanArogyaRepository();
     if (!repository.isConnected) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -3461,10 +4232,10 @@ class EmergencyRideCard extends StatelessWidget {
 
     try {
       await repository.requestEmergencyCab(
-        pickup: 'Malviya Nagar, Indore',
-        dropLocation: 'Apollo Hospitals, Indore',
-        pickupLatitude: 22.7501,
-        pickupLongitude: 75.8931,
+        pickup: appLocation.label,
+        dropLocation: '${hospital.name}, Indore',
+        pickupLatitude: appLocation.current.latitude,
+        pickupLongitude: appLocation.current.longitude,
       );
       if (!context.mounted) {
         return;
@@ -3590,59 +4361,202 @@ class HospitalMiniCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.all(14),
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: AppColors.soft,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.local_hospital_outlined,
-              color: AppColors.navy,
+    return AnimatedBuilder(
+      animation: appLocation,
+      builder: (context, _) {
+        final distance = hospital.distanceFrom(appLocation.current);
+        return AppCard(
+          padding: const EdgeInsets.all(14),
+          margin: const EdgeInsets.only(bottom: 12),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => PlaceDetailScreen(
+                title: hospital.name,
+                subtitle: '$distance - ${hospital.status}',
+                icon: Icons.local_hospital_rounded,
+                color: AppColors.red,
+                phone: hospital.phone,
+                location: hospital.latLng,
+              ),
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  hospital.name,
-                  style: const TextStyle(fontWeight: FontWeight.w900),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.soft,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(height: 4),
-                Text.rich(
-                  TextSpan(
-                    children: [
+                child: const Icon(
+                  Icons.local_hospital_outlined,
+                  color: AppColors.navy,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      hospital.name,
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 4),
+                    Text.rich(
                       TextSpan(
-                        text: hospital.distance,
-                        style: const TextStyle(color: AppColors.muted),
+                        children: [
+                          TextSpan(
+                            text: distance,
+                            style: const TextStyle(color: AppColors.muted),
+                          ),
+                          const TextSpan(text: '  -  '),
+                          TextSpan(
+                            text: hospital.status,
+                            style: const TextStyle(
+                              color: AppColors.green,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
                       ),
-                      const TextSpan(text: '  -  '),
-                      TextSpan(
-                        text: hospital.status,
-                        style: const TextStyle(
-                          color: AppColors.green,
-                          fontWeight: FontWeight.w800,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              CircleIcon(
+                icon: Icons.call_outlined,
+                onTap: () => callPhone(context, hospital.phone),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class PlaceDetailScreen extends StatelessWidget {
+  const PlaceDetailScreen({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.phone,
+    required this.location,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final String phone;
+  final LatLng location;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: AppPage(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+          children: [
+            TopBar(title: title),
+            const SizedBox(height: 22),
+            AppCard(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    radius: 28,
+                    backgroundColor: color.withValues(alpha: .12),
+                    child: Icon(icon, color: color),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: PrimaryButton(
+                          label: 'Call Now',
+                          onTap: () => callPhone(context, phone),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => openDirections(context, location),
+                          icon: const Icon(Icons.directions_rounded),
+                          label: const Text('Directions'),
                         ),
                       ),
                     ],
                   ),
-                  style: const TextStyle(fontSize: 12),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          CircleIcon(icon: Icons.call_outlined, onTap: () {}),
-        ],
+            const SizedBox(height: 18),
+            const SizedBox(
+              height: 320,
+              child: MapPanel(mode: MapMode.hospitals),
+            ),
+          ],
+        ),
       ),
     );
   }
+}
+
+Future<void> callPhone(BuildContext context, String phone) async {
+  final uri = Uri(scheme: 'tel', path: phone);
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri);
+    return;
+  }
+  if (!context.mounted) {
+    return;
+  }
+  ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text('Call: $phone')));
+}
+
+Future<void> openDirections(BuildContext context, LatLng location) async {
+  final uri = Uri.parse(
+    'https://www.google.com/maps/dir/?api=1&destination=${location.latitude},${location.longitude}',
+  );
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    return;
+  }
+  if (!context.mounted) {
+    return;
+  }
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        'Map: ${location.latitude.toStringAsFixed(4)}, ${location.longitude.toStringAsFixed(4)}',
+      ),
+    ),
+  );
 }
 
 class AyushmanCard extends StatelessWidget {
@@ -3807,42 +4721,67 @@ class KendraCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.all(14),
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEAF8EF),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.medication_liquid_rounded,
-              color: AppColors.green,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  place.name,
-                  style: const TextStyle(fontWeight: FontWeight.w900),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${place.distance}  -  ${place.area}',
-                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
-                ),
-              ],
+    return AnimatedBuilder(
+      animation: appLocation,
+      builder: (context, _) {
+        final distance = place.distanceFrom(appLocation.current);
+        return AppCard(
+          padding: const EdgeInsets.all(14),
+          margin: const EdgeInsets.only(bottom: 12),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => PlaceDetailScreen(
+                title: place.name,
+                subtitle: '$distance - ${place.area}',
+                icon: Icons.medication_liquid_rounded,
+                color: AppColors.green,
+                phone: place.phone,
+                location: place.latLng,
+              ),
             ),
           ),
-          CircleIcon(icon: Icons.call_outlined, onTap: () {}),
-        ],
-      ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEAF8EF),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.medication_liquid_rounded,
+                  color: AppColors.green,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      place.name,
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$distance  -  ${place.area}',
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              CircleIcon(
+                icon: Icons.call_outlined,
+                onTap: () => callPhone(context, place.phone),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -3987,35 +4926,44 @@ class ProfileMenuItem extends StatelessWidget {
     required this.icon,
     required this.title,
     this.danger = false,
+    this.onTap,
   });
 
   final IconData icon;
   final String title;
   final bool danger;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: AppColors.line)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: danger ? AppColors.red : AppColors.text, size: 20),
-          const SizedBox(width: 13),
-          Expanded(
-            child: Text(
-              title,
-              style: TextStyle(
-                color: danger ? AppColors.red : AppColors.text,
-                fontWeight: FontWeight.w700,
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(bottom: BorderSide(color: AppColors.line)),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: danger ? AppColors.red : AppColors.text,
+              size: 20,
+            ),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: danger ? AppColors.red : AppColors.text,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
-          ),
-          const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
-        ],
+            const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+          ],
+        ),
       ),
     );
   }
