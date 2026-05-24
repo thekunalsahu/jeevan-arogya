@@ -14,6 +14,194 @@ import 'supabase_models.dart';
 import 'supabase_service.dart';
 
 final appLocation = AppLocationController();
+final appData = AppDataController();
+
+class AppTextEntry {
+  const AppTextEntry({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+}
+
+class EmergencyContactEntry {
+  const EmergencyContactEntry({
+    required this.name,
+    required this.phone,
+    required this.relation,
+  });
+
+  final String name;
+  final String phone;
+  final String relation;
+}
+
+class ChatMessageEntry {
+  const ChatMessageEntry({
+    required this.sender,
+    required this.body,
+    required this.time,
+    this.fromUser = false,
+  });
+
+  final String sender;
+  final String body;
+  final String time;
+  final bool fromUser;
+}
+
+class MessageThreadEntry {
+  const MessageThreadEntry({
+    required this.name,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.messages,
+  });
+
+  final String name;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final List<ChatMessageEntry> messages;
+}
+
+class AppDataController extends ChangeNotifier {
+  final healthRecords = <AppTextEntry>[
+    const AppTextEntry(
+      title: 'Blood test report',
+      subtitle: 'CBC normal range - added today',
+      icon: Icons.science_rounded,
+      color: AppColors.blue,
+    ),
+  ];
+
+  final prescriptions = <AppTextEntry>[
+    const AppTextEntry(
+      title: 'Atorvastatin 10mg',
+      subtitle: 'Once daily after dinner',
+      icon: Icons.medication_rounded,
+      color: AppColors.green,
+    ),
+  ];
+
+  final allergies = <AppTextEntry>[
+    const AppTextEntry(
+      title: 'Penicillin allergy',
+      subtitle: 'Avoid penicillin group antibiotics',
+      icon: Icons.warning_amber_rounded,
+      color: AppColors.red,
+    ),
+  ];
+
+  final vitals = <AppTextEntry>[
+    const AppTextEntry(
+      title: 'Blood group: B+',
+      subtitle: 'Pulse 76 bpm - SpO2 98%',
+      icon: Icons.monitor_heart_rounded,
+      color: AppColors.red,
+    ),
+  ];
+
+  final addresses = <AppTextEntry>[
+    const AppTextEntry(
+      title: 'Home',
+      subtitle: 'Use GPS to update exact address',
+      icon: Icons.home_work_rounded,
+      color: AppColors.blue,
+    ),
+  ];
+
+  final notifications = <AppTextEntry>[
+    const AppTextEntry(
+      title: 'SOS alerts',
+      subtitle: 'Enabled for emergency contacts',
+      icon: Icons.notifications_active_rounded,
+      color: AppColors.green,
+    ),
+  ];
+
+  final emergencyContacts = <EmergencyContactEntry>[
+    const EmergencyContactEntry(
+      name: 'Emergency 108',
+      phone: '108',
+      relation: 'Ambulance',
+    ),
+  ];
+
+  final threads = <MessageThreadEntry>[
+    MessageThreadEntry(
+      name: 'Apollo Hospitals',
+      subtitle: 'Appointment desk',
+      icon: Icons.local_hospital_rounded,
+      color: AppColors.red,
+      messages: [
+        const ChatMessageEntry(
+          sender: 'Apollo Hospitals',
+          body: 'Your appointment is confirmed.',
+          time: '10:30 AM',
+        ),
+      ],
+    ),
+    MessageThreadEntry(
+      name: 'Emergency Contacts',
+      subtitle: 'SOS circle',
+      icon: Icons.groups_2_rounded,
+      color: AppColors.green,
+      messages: [
+        const ChatMessageEntry(
+          sender: 'System',
+          body: 'Emergency contacts are ready for SOS alerts.',
+          time: 'Today',
+        ),
+      ],
+    ),
+    MessageThreadEntry(
+      name: 'Health Schemes',
+      subtitle: 'Government care desk',
+      icon: Icons.health_and_safety_rounded,
+      color: AppColors.blue,
+      messages: [
+        const ChatMessageEntry(
+          sender: 'Jeevan Arogya',
+          body: 'Ayushman eligibility check is ready.',
+          time: 'Today',
+        ),
+      ],
+    ),
+  ];
+
+  void addEntry(List<AppTextEntry> target, AppTextEntry entry) {
+    target.insert(0, entry);
+    notifyListeners();
+  }
+
+  void addEmergencyContact(EmergencyContactEntry contact) {
+    emergencyContacts.insert(0, contact);
+    notifyListeners();
+  }
+
+  void addMessage(int threadIndex, String body) {
+    if (threadIndex < 0 || threadIndex >= threads.length) {
+      return;
+    }
+    threads[threadIndex].messages.add(
+      ChatMessageEntry(
+        sender: 'You',
+        body: body,
+        time: 'Now',
+        fromUser: true,
+      ),
+    );
+    notifyListeners();
+  }
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -1178,11 +1366,11 @@ class OtpOnlyAuthPill extends StatelessWidget {
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.phone_iphone_rounded, size: 17, color: Colors.white),
+                Icon(Icons.alternate_email_rounded, size: 17, color: Colors.white),
                 SizedBox(width: 7),
                 Flexible(
                   child: Text(
-                    'Mobile OTP Login',
+                    'Email OTP Login',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -1434,15 +1622,20 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   var _index = 0;
+  late AppUserProfile _profile = widget.profile;
 
   @override
   Widget build(BuildContext context) {
     final pages = [
-      HomeScreen(profile: widget.profile, onLogout: widget.onLogout),
+      HomeScreen(profile: _profile, onLogout: widget.onLogout),
       const AppointmentsScreen(),
       const SizedBox.shrink(),
       const MessagesScreen(),
-      ProfileScreen(profile: widget.profile, onLogout: widget.onLogout),
+      ProfileScreen(
+        profile: _profile,
+        onLogout: widget.onLogout,
+        onProfileChanged: (profile) => setState(() => _profile = profile),
+      ),
     ];
 
     return LayoutBuilder(
@@ -2599,23 +2792,36 @@ class HealthRecordsScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 18),
-            AppCard(
-              padding: const EdgeInsets.all(18),
-              child: Row(
-                children: [
-                  const Icon(Icons.add_circle_rounded, color: AppColors.green),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text(
-                      'Upload reports or prescriptions after backend storage is connected.',
-                      style: TextStyle(
-                        color: AppColors.muted,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
+            EditableEntryPanel(
+              title: 'Add Health Record',
+              titleHint: 'Report name',
+              subtitleHint: 'Notes, file link, doctor, date',
+              buttonLabel: 'Save Record',
+              icon: Icons.folder_copy_rounded,
+              color: AppColors.blue,
+              onSave: (title, subtitle) {
+                appData.addEntry(
+                  appData.healthRecords,
+                  AppTextEntry(
+                    title: title,
+                    subtitle: subtitle,
+                    icon: Icons.folder_copy_rounded,
+                    color: AppColors.blue,
                   ),
-                ],
-              ),
+                );
+              },
+            ),
+            const SizedBox(height: 18),
+            AnimatedBuilder(
+              animation: appData,
+              builder: (context, _) {
+                return Column(
+                  children: [
+                    for (final record in appData.healthRecords)
+                      InfoEntryCard(entry: record),
+                  ],
+                );
+              },
             ),
           ],
         ),
@@ -2712,20 +2918,28 @@ class MessagesScreen extends StatelessWidget {
     return AppPage(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 112),
-        children: const [
-          TopBar(title: 'Messages', showBack: false),
-          SizedBox(height: 20),
-          MessageTile(
-            name: 'Apollo Hospitals',
-            text: 'Your appointment is confirmed.',
-          ),
-          MessageTile(
-            name: 'Emergency Contacts',
-            text: '3 contacts are ready for SOS alerts.',
-          ),
-          MessageTile(
-            name: 'Health Schemes',
-            text: 'Ayushman eligibility check is pending.',
+        children: [
+          const TopBar(title: 'Messages', showBack: false),
+          const SizedBox(height: 20),
+          AnimatedBuilder(
+            animation: appData,
+            builder: (context, _) {
+              return Column(
+                children: [
+                  for (var i = 0; i < appData.threads.length; i++)
+                    MessageTile(
+                      name: appData.threads[i].name,
+                      text: appData.threads[i].messages.last.body,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChatThreadScreen(threadIndex: i),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -2738,10 +2952,12 @@ class ProfileScreen extends StatelessWidget {
     super.key,
     required this.profile,
     required this.onLogout,
+    required this.onProfileChanged,
   });
 
   final AppUserProfile profile;
   final Future<void> Function() onLogout;
+  final ValueChanged<AppUserProfile> onProfileChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -2749,13 +2965,35 @@ class ProfileScreen extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 112),
         children: [
-          const TopBar(
+          TopBar(
             title: 'Profile',
             showBack: false,
             trailingIcon: Icons.settings_outlined,
+            trailingOnTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => EditableInfoScreen(
+                  title: 'Notification Settings',
+                  entries: appData.notifications,
+                  defaultIcon: Icons.settings_rounded,
+                  color: AppColors.navy,
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 18),
-          ProfileHeaderCard(profile: profile),
+          ProfileHeaderCard(
+            profile: profile,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => EditProfileScreen(
+                  profile: profile,
+                  onSaved: onProfileChanged,
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 24),
           const Text(
             'My Health',
@@ -2778,13 +3016,11 @@ class ProfileScreen extends StatelessWidget {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => const SimpleInfoScreen(
+                builder: (_) => EditableInfoScreen(
                   title: 'Prescriptions',
-                  lines: [
-                    'Atorvastatin 10mg - once daily',
-                    'Vitamin D3 - weekly',
-                    'ORS sachets - as needed',
-                  ],
+                  entries: appData.prescriptions,
+                  defaultIcon: Icons.medication_rounded,
+                  color: AppColors.green,
                 ),
               ),
             ),
@@ -2795,13 +3031,11 @@ class ProfileScreen extends StatelessWidget {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => const SimpleInfoScreen(
+                builder: (_) => EditableInfoScreen(
                   title: 'Allergies & Conditions',
-                  lines: [
-                    'Penicillin allergy',
-                    'Mild seasonal asthma',
-                    'No active critical conditions',
-                  ],
+                  entries: appData.allergies,
+                  defaultIcon: Icons.warning_amber_rounded,
+                  color: AppColors.red,
                 ),
               ),
             ),
@@ -2812,9 +3046,11 @@ class ProfileScreen extends StatelessWidget {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => const SimpleInfoScreen(
+                builder: (_) => EditableInfoScreen(
                   title: 'Vital Health Info',
-                  lines: ['Blood group: B+', 'Pulse: 76 bpm', 'SpO2: 98%'],
+                  entries: appData.vitals,
+                  defaultIcon: Icons.monitor_heart_rounded,
+                  color: AppColors.red,
                 ),
               ),
             ),
@@ -2831,21 +3067,30 @@ class ProfileScreen extends StatelessWidget {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => const SimpleInfoScreen(
-                  title: 'Emergency Contacts',
-                  lines: [
-                    'No emergency contacts added yet.',
-                    'Add trusted family contacts from the backend profile module.',
-                    'Local ambulance helpline: 108',
-                  ],
-                ),
+                builder: (_) => const EmergencyContactsScreen(),
               ),
             ),
           ),
           ProfileMenuItem(
             icon: Icons.location_on_outlined,
             title: 'Address Book',
-            onTap: appLocation.requestCurrentLocation,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => EditableInfoScreen(
+                  title: 'Address Book',
+                  entries: appData.addresses,
+                  defaultIcon: Icons.location_on_rounded,
+                  color: AppColors.blue,
+                  onBeforeAdd: () async {
+                    await appLocation.requestCurrentLocation();
+                  },
+                  seedSubtitle: appLocation.resolved
+                      ? appLocation.label
+                      : 'Address or landmark',
+                ),
+              ),
+            ),
           ),
           ProfileMenuItem(
             icon: Icons.notifications_none_rounded,
@@ -2853,13 +3098,11 @@ class ProfileScreen extends StatelessWidget {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => const SimpleInfoScreen(
+                builder: (_) => EditableInfoScreen(
                   title: 'Notification Settings',
-                  lines: [
-                    'SOS alerts enabled',
-                    'Appointment reminders enabled',
-                    'Medicine refill reminders enabled',
-                  ],
+                  entries: appData.notifications,
+                  defaultIcon: Icons.notifications_active_rounded,
+                  color: AppColors.green,
                 ),
               ),
             ),
@@ -2939,6 +3182,641 @@ class SimpleInfoScreen extends StatelessWidget {
   }
 }
 
+class EditableInfoScreen extends StatelessWidget {
+  const EditableInfoScreen({
+    super.key,
+    required this.title,
+    required this.entries,
+    required this.defaultIcon,
+    required this.color,
+    this.onBeforeAdd,
+    this.seedSubtitle,
+  });
+
+  final String title;
+  final List<AppTextEntry> entries;
+  final IconData defaultIcon;
+  final Color color;
+  final Future<void> Function()? onBeforeAdd;
+  final String? seedSubtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: AppPage(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+          children: [
+            TopBar(title: title),
+            const SizedBox(height: 18),
+            EditableEntryPanel(
+              title: 'Add $title',
+              titleHint: 'Title',
+              subtitleHint: seedSubtitle ?? 'Details',
+              buttonLabel: 'Save',
+              icon: defaultIcon,
+              color: color,
+              onBeforeSave: onBeforeAdd,
+              onSave: (entryTitle, subtitle) {
+                appData.addEntry(
+                  entries,
+                  AppTextEntry(
+                    title: entryTitle,
+                    subtitle: subtitle,
+                    icon: defaultIcon,
+                    color: color,
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 18),
+            AnimatedBuilder(
+              animation: appData,
+              builder: (context, _) {
+                return Column(
+                  children: [for (final entry in entries) InfoEntryCard(entry: entry)],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class EditableEntryPanel extends StatefulWidget {
+  const EditableEntryPanel({
+    super.key,
+    required this.title,
+    required this.titleHint,
+    required this.subtitleHint,
+    required this.buttonLabel,
+    required this.icon,
+    required this.color,
+    required this.onSave,
+    this.onBeforeSave,
+  });
+
+  final String title;
+  final String titleHint;
+  final String subtitleHint;
+  final String buttonLabel;
+  final IconData icon;
+  final Color color;
+  final void Function(String title, String subtitle) onSave;
+  final Future<void> Function()? onBeforeSave;
+
+  @override
+  State<EditableEntryPanel> createState() => _EditableEntryPanelState();
+}
+
+class _EditableEntryPanelState extends State<EditableEntryPanel> {
+  final _titleController = TextEditingController();
+  final _subtitleController = TextEditingController();
+  var _busy = false;
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _subtitleController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: widget.color.withValues(alpha: .12),
+                child: Icon(widget.icon, color: widget.color),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  widget.title,
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _titleController,
+            decoration: InputDecoration(
+              hintText: widget.titleHint,
+              filled: true,
+              fillColor: AppColors.soft,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _subtitleController,
+            minLines: 2,
+            maxLines: 4,
+            decoration: InputDecoration(
+              hintText: widget.subtitleHint,
+              filled: true,
+              fillColor: AppColors.soft,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          PrimaryButton(
+            label: _busy ? 'Saving...' : widget.buttonLabel,
+            onTap: _busy ? null : _save,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _save() async {
+    final title = _titleController.text.trim();
+    final subtitle = _subtitleController.text.trim();
+    if (title.isEmpty || subtitle.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill both fields.')),
+      );
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      await widget.onBeforeSave?.call();
+      widget.onSave(title, subtitle);
+      _titleController.clear();
+      _subtitleController.clear();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Saved.')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _busy = false);
+      }
+    }
+  }
+}
+
+class InfoEntryCard extends StatelessWidget {
+  const InfoEntryCard({super.key, required this.entry});
+
+  final AppTextEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: entry.color.withValues(alpha: .12),
+            child: Icon(entry.icon, color: entry.color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  entry.title,
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  entry.subtitle,
+                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class EmergencyContactsScreen extends StatefulWidget {
+  const EmergencyContactsScreen({super.key});
+
+  @override
+  State<EmergencyContactsScreen> createState() =>
+      _EmergencyContactsScreenState();
+}
+
+class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
+  final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _relationController = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _relationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: AppPage(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+          children: [
+            const TopBar(title: 'Emergency Contacts'),
+            const SizedBox(height: 18),
+            AppCard(
+              child: Column(
+                children: [
+                  _contactField(_nameController, 'Name', Icons.person_rounded),
+                  const SizedBox(height: 10),
+                  _contactField(
+                    _phoneController,
+                    'Phone number',
+                    Icons.phone_rounded,
+                    keyboardType: TextInputType.phone,
+                  ),
+                  const SizedBox(height: 10),
+                  _contactField(
+                    _relationController,
+                    'Relation',
+                    Icons.family_restroom_rounded,
+                  ),
+                  const SizedBox(height: 12),
+                  PrimaryButton(label: 'Add Contact', onTap: _addContact),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            AnimatedBuilder(
+              animation: appData,
+              builder: (context, _) {
+                return Column(
+                  children: [
+                    for (final contact in appData.emergencyContacts)
+                      AppCard(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: Row(
+                          children: [
+                            const CircleAvatar(
+                              backgroundColor: AppColors.soft,
+                              child: Icon(
+                                Icons.contact_phone_rounded,
+                                color: AppColors.navy,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    contact.name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${contact.relation} - ${contact.phone}',
+                                    style: const TextStyle(
+                                      color: AppColors.muted,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            CircleIcon(
+                              icon: Icons.call_rounded,
+                              onTap: () => callPhone(context, contact.phone),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _contactField(
+    TextEditingController controller,
+    String hint,
+    IconData icon, {
+    TextInputType? keyboardType,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        prefixIcon: Icon(icon, color: AppColors.navy),
+        hintText: hint,
+        filled: true,
+        fillColor: AppColors.soft,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+
+  void _addContact() {
+    final name = _nameController.text.trim();
+    final phone = _phoneController.text.trim();
+    final relation = _relationController.text.trim();
+    if (name.isEmpty || phone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Name and phone are required.')),
+      );
+      return;
+    }
+    appData.addEmergencyContact(
+      EmergencyContactEntry(
+        name: name,
+        phone: phone,
+        relation: relation.isEmpty ? 'Emergency contact' : relation,
+      ),
+    );
+    _nameController.clear();
+    _phoneController.clear();
+    _relationController.clear();
+  }
+}
+
+class EditProfileScreen extends StatefulWidget {
+  const EditProfileScreen({
+    super.key,
+    required this.profile,
+    required this.onSaved,
+  });
+
+  final AppUserProfile profile;
+  final ValueChanged<AppUserProfile> onSaved;
+
+  @override
+  State<EditProfileScreen> createState() => _EditProfileScreenState();
+}
+
+class _EditProfileScreenState extends State<EditProfileScreen> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _emailController;
+  final _contactController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.profile.name);
+    _emailController = TextEditingController(text: widget.profile.phone);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _contactController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: AppPage(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+          children: [
+            const TopBar(title: 'Edit Profile'),
+            const SizedBox(height: 18),
+            AppCard(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                children: [
+                  CircleAvatar(
+                    radius: 42,
+                    backgroundColor: const Color(0xFF91B7F2),
+                    child: Text(
+                      widget.profile.initial,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 34,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  _field(_nameController, 'Full name', Icons.person_rounded),
+                  const SizedBox(height: 12),
+                  _field(
+                    _emailController,
+                    'Email address',
+                    Icons.alternate_email_rounded,
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                  const SizedBox(height: 12),
+                  _field(
+                    _contactController,
+                    'Contact number',
+                    Icons.phone_rounded,
+                    keyboardType: TextInputType.phone,
+                  ),
+                  const SizedBox(height: 16),
+                  PrimaryButton(label: 'Save Profile', onTap: _save),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _field(
+    TextEditingController controller,
+    String hint,
+    IconData icon, {
+    TextInputType? keyboardType,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        prefixIcon: Icon(icon, color: AppColors.navy),
+        hintText: hint,
+        filled: true,
+        fillColor: AppColors.soft,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+
+  void _save() {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final contact = _contactController.text.trim();
+    if (name.length < 2 || !email.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a valid name and email.')),
+      );
+      return;
+    }
+    widget.onSaved(AppUserProfile(name: name, phone: email));
+    if (contact.isNotEmpty) {
+      appData.addEmergencyContact(
+        EmergencyContactEntry(
+          name: name,
+          phone: contact,
+          relation: 'Personal contact',
+        ),
+      );
+    }
+    Navigator.pop(context);
+  }
+}
+
+class ChatThreadScreen extends StatefulWidget {
+  const ChatThreadScreen({super.key, required this.threadIndex});
+
+  final int threadIndex;
+
+  @override
+  State<ChatThreadScreen> createState() => _ChatThreadScreenState();
+}
+
+class _ChatThreadScreenState extends State<ChatThreadScreen> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final thread = appData.threads[widget.threadIndex];
+    return Scaffold(
+      body: AppPage(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
+              child: TopBar(title: thread.name),
+            ),
+            Expanded(
+              child: AnimatedBuilder(
+                animation: appData,
+                builder: (context, _) {
+                  return ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                    children: [
+                      for (final message in thread.messages)
+                        Align(
+                          alignment: message.fromUser
+                              ? Alignment.centerRight
+                              : Alignment.centerLeft,
+                          child: Container(
+                            constraints: const BoxConstraints(maxWidth: 520),
+                            margin: const EdgeInsets.only(bottom: 10),
+                            padding: const EdgeInsets.all(13),
+                            decoration: BoxDecoration(
+                              color: message.fromUser
+                                  ? AppColors.navy
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: AppColors.line),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  message.body,
+                                  style: TextStyle(
+                                    color: message.fromUser
+                                        ? Colors.white
+                                        : AppColors.text,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                const SizedBox(height: 5),
+                                Text(
+                                  message.time,
+                                  style: TextStyle(
+                                    color: message.fromUser
+                                        ? Colors.white70
+                                        : AppColors.muted,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      decoration: InputDecoration(
+                        hintText: 'Type a message...',
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(999),
+                          borderSide: const BorderSide(color: AppColors.line),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  CircleIcon(icon: Icons.send_rounded, onTap: _send),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _send() {
+    final text = _controller.text.trim();
+    if (text.isEmpty) {
+      return;
+    }
+    appData.addMessage(widget.threadIndex, text);
+    _controller.clear();
+  }
+}
+
 class AppPage extends StatelessWidget {
   const AppPage({super.key, required this.child});
 
@@ -2976,16 +3854,7 @@ class HomeHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        CircleIcon(
-          icon: Icons.menu_rounded,
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) =>
-                  ProfileScreen(profile: profile, onLogout: onLogout),
-            ),
-          ),
-        ),
+        const SizedBox(width: 44),
         const Spacer(),
         const LogoMark(width: 136, height: 52),
         const Spacer(),
@@ -3059,12 +3928,14 @@ class TopBar extends StatelessWidget {
     super.key,
     required this.title,
     this.trailingIcon,
+    this.trailingOnTap,
     this.onBack,
     this.showBack = true,
   });
 
   final String title;
   final IconData? trailingIcon;
+  final VoidCallback? trailingOnTap;
   final VoidCallback? onBack;
   final bool showBack;
 
@@ -3084,7 +3955,7 @@ class TopBar extends StatelessWidget {
           ),
         ),
         if (trailingIcon != null)
-          CircleIcon(icon: trailingIcon!, onTap: () {})
+          CircleIcon(icon: trailingIcon!, onTap: trailingOnTap ?? () {})
         else
           const SizedBox(width: 40),
       ],
@@ -3476,17 +4347,26 @@ class ServiceGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
-      itemCount: items.length,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
-        childAspectRatio: 1.35,
-      ),
-      itemBuilder: (context, index) => ServiceCard(item: items[index]),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 900
+            ? 4
+            : constraints.maxWidth >= 620
+            ? 3
+            : 2;
+        return GridView.builder(
+          itemCount: items.length,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: constraints.maxWidth >= 620 ? 1.65 : 1.35,
+          ),
+          itemBuilder: (context, index) => ServiceCard(item: items[index]),
+        );
+      },
     );
   }
 }
@@ -3985,10 +4865,11 @@ class SosPulseButton extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Demo SOS active. Add Supabase keys for real alert save.',
+            'Opening emergency call. Supabase alert save is offline.',
           ),
         ),
       );
+      await callPhone(context, _primaryEmergencyPhone());
       return;
     }
 
@@ -4001,8 +4882,9 @@ class SosPulseButton extends StatelessWidget {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('SOS alert saved in Supabase.')),
+        const SnackBar(content: Text('SOS alert saved. Opening emergency call.')),
       );
+      await callPhone(context, _primaryEmergencyPhone());
     } catch (error) {
       if (!context.mounted) {
         return;
@@ -4010,7 +4892,15 @@ class SosPulseButton extends StatelessWidget {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('SOS failed: $error')));
+      await callPhone(context, _primaryEmergencyPhone());
     }
+  }
+
+  String _primaryEmergencyPhone() {
+    if (appData.emergencyContacts.isNotEmpty) {
+      return appData.emergencyContacts.first.phone;
+    }
+    return '108';
   }
 }
 
@@ -4855,7 +5745,19 @@ class AyushmanCard extends StatelessWidget {
                 SizedBox(
                   height: 38,
                   child: FilledButton(
-                    onPressed: () {},
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const SimpleInfoScreen(
+                          title: 'Ayushman Eligibility',
+                          lines: [
+                            'Carry Aadhaar or family ID for verification.',
+                            'Check eligibility at nearby empanelled hospital desk.',
+                            'Cashless cover can go up to Rs. 5,00,000 per family per year.',
+                          ],
+                        ),
+                      ),
+                    ),
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.navy,
                       foregroundColor: Colors.white,
@@ -5086,14 +5988,21 @@ class AppointmentCard extends StatelessWidget {
 }
 
 class MessageTile extends StatelessWidget {
-  const MessageTile({super.key, required this.name, required this.text});
+  const MessageTile({
+    super.key,
+    required this.name,
+    required this.text,
+    this.onTap,
+  });
 
   final String name;
   final String text;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return AppCard(
+      onTap: onTap,
       margin: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
@@ -5125,13 +6034,15 @@ class MessageTile extends StatelessWidget {
 }
 
 class ProfileHeaderCard extends StatelessWidget {
-  const ProfileHeaderCard({super.key, required this.profile});
+  const ProfileHeaderCard({super.key, required this.profile, this.onTap});
 
   final AppUserProfile profile;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return AppCard(
+      onTap: onTap,
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [

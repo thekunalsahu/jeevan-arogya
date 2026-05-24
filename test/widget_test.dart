@@ -15,7 +15,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.text('Welcome back'), findsOneWidget);
-    expect(find.text('Mobile OTP Login'), findsOneWidget);
+    expect(find.text('Email OTP Login'), findsOneWidget);
     expect(find.byType(TextField), findsNWidgets(2));
     expect(find.text('Explore demo without login'), findsNothing);
     expect(find.text('Continue with Gmail'), findsNothing);
