@@ -234,7 +234,7 @@ IconData materialIconFromCode(int? code, IconData fallback) {
 }
 
 class AppDataController extends ChangeNotifier {
-  static const _storageKey = 'jeevan_arogya_app_data_v2';
+  static const _storageKey = 'jeevan_arogya_app_data_v3';
 
   final healthRecords = <AppTextEntry>[];
   final prescriptions = <AppTextEntry>[];
@@ -361,6 +361,12 @@ class AppDataController extends ChangeNotifier {
   void saveProfile(String name, String email) {
     profileName = name;
     profileEmail = email;
+    _changed();
+  }
+
+  void clearLoginSession() {
+    profileName = '';
+    profileEmail = '';
     _changed();
   }
 
@@ -532,6 +538,72 @@ const doctors = [
     reviews: '68',
     nextSlot: 'Today, 04:30 PM',
     color: Color(0xFFFFF1DF),
+  ),
+  Doctor(
+    name: 'Dr. Ritu Sengar',
+    specialty: 'Gynecologist',
+    experience: '12+ Years Exp.',
+    degree: 'MBBS, MS',
+    fee: 'Rs. 750',
+    rating: '4.7',
+    reviews: '112',
+    nextSlot: 'Tomorrow, 09:30 AM',
+    color: Color(0xFFFFEFF8),
+  ),
+  Doctor(
+    name: 'Dr. Sameer Khan',
+    specialty: 'Dentist',
+    experience: '11+ Years Exp.',
+    degree: 'BDS, MDS',
+    fee: 'Rs. 450',
+    rating: '4.6',
+    reviews: '89',
+    nextSlot: 'Today, 05:00 PM',
+    color: Color(0xFFEAFBF3),
+  ),
+  Doctor(
+    name: 'Dr. Meera Joshi',
+    specialty: 'General Physician',
+    experience: '14+ Years Exp.',
+    degree: 'MBBS, MD Medicine',
+    fee: 'Rs. 550',
+    rating: '4.8',
+    reviews: '176',
+    nextSlot: 'Today, 12:30 PM',
+    color: Color(0xFFE9F0F8),
+  ),
+  Doctor(
+    name: 'Dr. Vivek Tiwari',
+    specialty: 'ENT',
+    experience: '9+ Years Exp.',
+    degree: 'MBBS, MS ENT',
+    fee: 'Rs. 600',
+    rating: '4.5',
+    reviews: '72',
+    nextSlot: 'Tomorrow, 03:30 PM',
+    color: Color(0xFFE7F4FF),
+  ),
+  Doctor(
+    name: 'Dr. Priyanka Rao',
+    specialty: 'Neurologist',
+    experience: '13+ Years Exp.',
+    degree: 'MBBS, DM Neurology',
+    fee: 'Rs. 1000',
+    rating: '4.9',
+    reviews: '141',
+    nextSlot: 'Sat, 11:00 AM',
+    color: Color(0xFFF4F0FF),
+  ),
+  Doctor(
+    name: 'Dr. Amit Chouhan',
+    specialty: 'Cardiologist',
+    experience: '16+ Years Exp.',
+    degree: 'MBBS, DM Cardiology',
+    fee: 'Rs. 1200',
+    rating: '4.9',
+    reviews: '204',
+    nextSlot: 'Today, 06:30 PM',
+    color: Color(0xFFEAFBF3),
   ),
 ];
 
@@ -850,9 +922,12 @@ class _AuthGateState extends State<AuthGate> {
         return;
       }
       setState(() {
-        _loggedIn = state.session != null;
         if (state.session?.user != null) {
           _profile = AppUserProfile.fromUser(state.session!.user);
+          appData.saveProfile(_profile.name, _profile.phone);
+          _loggedIn = true;
+        } else {
+          _loggedIn = appData.profileEmail.isNotEmpty;
         }
       });
     });
@@ -874,6 +949,7 @@ class _AuthGateState extends State<AuthGate> {
 
   Future<void> _logout() async {
     await _repository.signOut();
+    appData.clearLoginSession();
     if (!mounted) {
       return;
     }
@@ -1301,31 +1377,54 @@ class _LiveSignalIconState extends State<LiveSignalIcon>
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 18,
-      height: 18,
+      width: 22,
+      height: 22,
       child: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) {
-          final pulse = .55 + math.sin(_controller.value * math.pi * 2) * .45;
           return Stack(
             alignment: Alignment.center,
             children: [
-              Icon(
-                Icons.wifi_tethering_rounded,
-                color: AppColors.green.withValues(alpha: .42 + pulse * .42),
-                size: 18,
+              for (final offset in [0.0, .34, .68])
+                _SignalRing(progress: (_controller.value + offset) % 1),
+              const Icon(
+                Icons.sensors_rounded,
+                color: AppColors.green,
+                size: 15,
               ),
-              Container(
-                width: 5 + pulse * 3,
-                height: 5 + pulse * 3,
-                decoration: const BoxDecoration(
+              const DecoratedBox(
+                decoration: BoxDecoration(
                   color: AppColors.green,
                   shape: BoxShape.circle,
                 ),
+                child: SizedBox(width: 4, height: 4),
               ),
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _SignalRing extends StatelessWidget {
+  const _SignalRing({required this.progress});
+
+  final double progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final size = 7 + progress * 18;
+    final opacity = (1 - progress).clamp(0.0, 1.0) * .55;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: AppColors.green.withValues(alpha: opacity),
+          width: 1.5,
+        ),
       ),
     );
   }
@@ -2611,6 +2710,7 @@ class FindDoctorsScreen extends StatefulWidget {
 
 class _FindDoctorsScreenState extends State<FindDoctorsScreen> {
   var _query = '';
+  var _specialty = 'All';
 
   @override
   Widget build(BuildContext context) {
@@ -2619,9 +2719,10 @@ class _FindDoctorsScreenState extends State<FindDoctorsScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 112),
           children: [
-            const TopBar(
+            TopBar(
               title: 'Find Doctors',
               trailingIcon: Icons.tune_rounded,
+              trailingOnTap: _showFilterSheet,
             ),
             const SizedBox(height: 24),
             SearchBox(
@@ -2642,25 +2743,82 @@ class _FindDoctorsScreenState extends State<FindDoctorsScreen> {
                 }
                 return Column(
                   children: [
-                    const CategoryChips(
-                      labels: [
+                    CategoryChips(
+                      selectedLabel: _specialty,
+                      onSelected: (value) => setState(() => _specialty = value),
+                      labels: const [
                         'All',
                         'Cardiologist',
+                        'Orthopedic',
+                        'General Physician',
+                        'ENT',
+                        'Neurologist',
                         'Dentist',
                         'Pediatrician',
                         'Gynecologist',
+                        'Dermatologist',
                       ],
                     ),
                     const SizedBox(height: 16),
                     DoctorDirectoryList(
                       repository: JeevanArogyaRepository(),
                       query: _query,
+                      specialty: _specialty,
                     ),
                   ],
                 );
               },
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showFilterSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Filter Doctors',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final label in [
+                    'All',
+                    'Cardiologist',
+                    'Orthopedic',
+                    'General Physician',
+                    'ENT',
+                    'Neurologist',
+                    'Pediatrician',
+                    'Dermatologist',
+                    'Dentist',
+                    'Gynecologist',
+                  ])
+                    ChoiceChip(
+                      label: Text(label),
+                      selected: _specialty == label,
+                      onSelected: (_) {
+                        setState(() => _specialty = label);
+                        Navigator.pop(context);
+                      },
+                    ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -2672,19 +2830,24 @@ class DoctorDirectoryList extends StatelessWidget {
     super.key,
     required this.repository,
     required this.query,
+    required this.specialty,
   });
 
   final JeevanArogyaRepository repository;
   final String query;
+  final String specialty;
 
   List<Doctor> _filter(List<Doctor> source) {
     final q = query.trim().toLowerCase();
-    if (q.isEmpty) {
-      return source;
-    }
     return source
         .where(
           (doctor) =>
+              specialty == 'All' ||
+              doctor.specialty.toLowerCase() == specialty.toLowerCase(),
+        )
+        .where(
+          (doctor) =>
+              q.isEmpty ||
               doctor.name.toLowerCase().contains(q) ||
               doctor.specialty.toLowerCase().contains(q) ||
               doctor.degree.toLowerCase().contains(q),
@@ -3180,6 +3343,10 @@ class NearbyHospitalsScreen extends StatelessWidget {
               child: TopBar(
                 title: 'Nearby Hospitals',
                 trailingIcon: Icons.tune_rounded,
+                trailingOnTap: () => showFilterInfo(
+                  context,
+                  'Hospitals are sorted by live GPS distance. Tap GPS to refresh nearest 24x7 care.',
+                ),
                 onBack: () => Navigator.pop(context),
               ),
             ),
@@ -3228,6 +3395,107 @@ class NearbyHospitalsScreen extends StatelessWidget {
   }
 }
 
+class HealthSchemeInfo {
+  const HealthSchemeInfo({
+    required this.title,
+    required this.subtitle,
+    required this.department,
+    required this.benefit,
+    required this.eligibility,
+    required this.documents,
+    required this.actionLabel,
+    required this.url,
+    required this.icon,
+    required this.color,
+  });
+
+  final String title;
+  final String subtitle;
+  final String department;
+  final String benefit;
+  final String eligibility;
+  final List<String> documents;
+  final String actionLabel;
+  final String url;
+  final IconData icon;
+  final Color color;
+}
+
+const healthSchemeInfos = [
+  HealthSchemeInfo(
+    title: 'Ayushman Bharat PM-JAY',
+    subtitle: 'Cashless hospital care up to Rs. 5,00,000',
+    department: 'National Health Authority',
+    benefit: 'Cashless secondary and tertiary hospital treatment for eligible families.',
+    eligibility: 'Check eligibility through beneficiary portal using Aadhaar, mobile, PM-JAY ID, or family details.',
+    documents: ['Aadhaar card', 'Ration card or family ID', 'Mobile number', 'Hospital referral if required'],
+    actionLabel: 'Check Eligibility',
+    url: 'https://beneficiary.nha.gov.in/',
+    icon: Icons.health_and_safety_rounded,
+    color: AppColors.green,
+  ),
+  HealthSchemeInfo(
+    title: 'Jan Aushadhi Yojana',
+    subtitle: 'Affordable generic medicines',
+    department: 'Department of Pharmaceuticals',
+    benefit: 'Find low-cost quality generic medicines through Pradhan Mantri Bhartiya Janaushadhi Kendras.',
+    eligibility: 'Available to all citizens. Call nearest kendra to confirm medicine stock.',
+    documents: ['Prescription if medicine requires it', 'Medicine name or salt name'],
+    actionLabel: 'Open Portal',
+    url: 'https://janaushadhi.gov.in/',
+    icon: Icons.medication_liquid_rounded,
+    color: Color(0xFFBFE9FF),
+  ),
+  HealthSchemeInfo(
+    title: 'CGHS',
+    subtitle: 'Central Government Health Scheme',
+    department: 'Ministry of Health and Family Welfare',
+    benefit: 'OPD, medicines, diagnostics and empanelled hospital care for eligible central government beneficiaries.',
+    eligibility: 'Central government employees, pensioners and other notified beneficiary groups.',
+    documents: ['CGHS card', 'Government ID', 'Referral or prescription when needed'],
+    actionLabel: 'CGHS Website',
+    url: 'https://cghs.gov.in/',
+    icon: Icons.local_hospital_rounded,
+    color: Color(0xFFFFC9D0),
+  ),
+  HealthSchemeInfo(
+    title: 'ESIC',
+    subtitle: 'Employees State Insurance Scheme',
+    department: 'Employees State Insurance Corporation',
+    benefit: 'Medical, sickness, maternity, disability and dependent benefits for covered workers.',
+    eligibility: 'Employees and families covered under ESIC contribution rules.',
+    documents: ['ESIC insurance number', 'Aadhaar or identity proof', 'Employer details'],
+    actionLabel: 'ESIC Portal',
+    url: 'https://www.esic.gov.in/',
+    icon: Icons.verified_user_rounded,
+    color: Color(0xFFFFD99C),
+  ),
+  HealthSchemeInfo(
+    title: 'ABHA Health ID',
+    subtitle: 'Digital health account',
+    department: 'Ayushman Bharat Digital Mission',
+    benefit: 'Create a digital health ID to link and access health records securely.',
+    eligibility: 'Available to Indian residents with mobile/Aadhaar based verification.',
+    documents: ['Mobile number', 'Aadhaar or driving licence if used'],
+    actionLabel: 'Create ABHA',
+    url: 'https://abha.abdm.gov.in/',
+    icon: Icons.badge_rounded,
+    color: Color(0xFFE6C8FF),
+  ),
+  HealthSchemeInfo(
+    title: 'CoWIN',
+    subtitle: 'Vaccination certificates and services',
+    department: 'Ministry of Health and Family Welfare',
+    benefit: 'Access vaccination certificates and vaccination service information.',
+    eligibility: 'Available to citizens with registered mobile number.',
+    documents: ['Registered mobile number', 'Beneficiary reference details'],
+    actionLabel: 'Open CoWIN',
+    url: 'https://www.cowin.gov.in/',
+    icon: Icons.vaccines_rounded,
+    color: Color(0xFFD9F99D),
+  ),
+];
+
 class HealthSchemesScreen extends StatelessWidget {
   const HealthSchemesScreen({super.key});
 
@@ -3237,40 +3505,18 @@ class HealthSchemesScreen extends StatelessWidget {
       body: AppPage(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
-          children: const [
-            TopBar(title: 'Health Schemes'),
-            SizedBox(height: 18),
-            AyushmanCard(),
-            SizedBox(height: 22),
-            Text(
+          children: [
+            const TopBar(title: 'Health Schemes'),
+            const SizedBox(height: 18),
+            AyushmanCard(scheme: healthSchemeInfos.first),
+            const SizedBox(height: 22),
+            const Text(
               'Other Government Schemes',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
             ),
-            SizedBox(height: 12),
-            SchemeTile(
-              icon: Icons.local_hospital_rounded,
-              title: 'State Health Scheme',
-              subtitle: 'Scheme by your state government',
-              color: Color(0xFFBFE9FF),
-            ),
-            SchemeTile(
-              icon: Icons.health_and_safety_rounded,
-              title: 'CGHS',
-              subtitle: 'Central Government Health Scheme',
-              color: Color(0xFFFFC9D0),
-            ),
-            SchemeTile(
-              icon: Icons.verified_user_rounded,
-              title: 'ESIC',
-              subtitle: 'Employees State Insurance Scheme',
-              color: Color(0xFFFFD99C),
-            ),
-            SchemeTile(
-              icon: Icons.dashboard_customize_rounded,
-              title: 'Others',
-              subtitle: 'More government schemes',
-              color: Color(0xFFE6C8FF),
-            ),
+            const SizedBox(height: 12),
+            for (final scheme in healthSchemeInfos.skip(1))
+              SchemeTile(scheme: scheme),
           ],
         ),
       ),
@@ -3388,6 +3634,10 @@ class JanAushadhiScreen extends StatelessWidget {
               child: TopBar(
                 title: 'Jan Aushadhi Kendras',
                 trailingIcon: Icons.tune_rounded,
+                trailingOnTap: () => showFilterInfo(
+                  context,
+                  'Jan Aushadhi stores are sorted by live GPS distance. Call a store to confirm stock.',
+                ),
                 onBack: () => Navigator.pop(context),
               ),
             ),
@@ -3575,6 +3825,7 @@ class ProfileScreen extends StatelessWidget {
                   entries: appData.notifications,
                   defaultIcon: Icons.settings_rounded,
                   color: AppColors.navy,
+                  allowAttachments: false,
                 ),
               ),
             ),
@@ -3686,6 +3937,7 @@ class ProfileScreen extends StatelessWidget {
                   seedSubtitle: appLocation.resolved
                       ? appLocation.label
                       : 'Address or landmark',
+                  allowAttachments: false,
                 ),
               ),
             ),
@@ -3701,6 +3953,7 @@ class ProfileScreen extends StatelessWidget {
                   entries: appData.notifications,
                   defaultIcon: Icons.notifications_active_rounded,
                   color: AppColors.green,
+                  allowAttachments: false,
                 ),
               ),
             ),
@@ -3789,6 +4042,7 @@ class EditableInfoScreen extends StatelessWidget {
     required this.color,
     this.onBeforeAdd,
     this.seedSubtitle,
+    this.allowAttachments = true,
   });
 
   final String title;
@@ -3797,6 +4051,7 @@ class EditableInfoScreen extends StatelessWidget {
   final Color color;
   final Future<void> Function()? onBeforeAdd;
   final String? seedSubtitle;
+  final bool allowAttachments;
 
   @override
   Widget build(BuildContext context) {
@@ -3814,6 +4069,7 @@ class EditableInfoScreen extends StatelessWidget {
               buttonLabel: 'Save',
               icon: defaultIcon,
               color: color,
+              allowAttachments: allowAttachments,
               onBeforeSave: onBeforeAdd,
               onSave: (entryTitle, subtitle, attachmentName, attachmentType) {
                 appData.addEntry(
@@ -3855,6 +4111,7 @@ class EditableEntryPanel extends StatefulWidget {
     required this.icon,
     required this.color,
     required this.onSave,
+    this.allowAttachments = true,
     this.onBeforeSave,
   });
 
@@ -3864,6 +4121,7 @@ class EditableEntryPanel extends StatefulWidget {
   final String buttonLabel;
   final IconData icon;
   final Color color;
+  final bool allowAttachments;
   final void Function(
     String title,
     String subtitle,
@@ -3941,24 +4199,26 @@ class _EditableEntryPanelState extends State<EditableEntryPanel> {
               ),
             ),
           ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 10,
-            runSpacing: 8,
-            children: [
-              OutlinedButton.icon(
-                onPressed: _busy ? null : () => _pickAttachment(false),
-                icon: const Icon(Icons.upload_file_rounded),
-                label: const Text('Upload File'),
-              ),
-              OutlinedButton.icon(
-                onPressed: _busy ? null : () => _pickAttachment(true),
-                icon: const Icon(Icons.image_rounded),
-                label: const Text('Upload Image'),
-              ),
-            ],
-          ),
-          if (_attachmentName.isNotEmpty) ...[
+          if (widget.allowAttachments) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : () => _pickAttachment(false),
+                  icon: const Icon(Icons.upload_file_rounded),
+                  label: const Text('Upload File'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : () => _pickAttachment(true),
+                  icon: const Icon(Icons.image_rounded),
+                  label: const Text('Upload Image'),
+                ),
+              ],
+            ),
+          ],
+          if (widget.allowAttachments && _attachmentName.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(
               'Attached: $_attachmentName',
@@ -5240,9 +5500,16 @@ class SectionHeader extends StatelessWidget {
 }
 
 class CategoryChips extends StatelessWidget {
-  const CategoryChips({super.key, required this.labels});
+  const CategoryChips({
+    super.key,
+    required this.labels,
+    this.selectedLabel = 'All',
+    this.onSelected,
+  });
 
   final List<String> labels;
+  final String selectedLabel;
+  final ValueChanged<String>? onSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -5251,19 +5518,30 @@ class CategoryChips extends StatelessWidget {
       child: Row(
         children: [
           for (var i = 0; i < labels.length; i++)
-            Container(
-              margin: const EdgeInsets.only(right: 9),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-              decoration: BoxDecoration(
-                color: i == 0 ? AppColors.navy : AppColors.soft,
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Text(
-                labels[i],
-                style: TextStyle(
-                  color: i == 0 ? Colors.white : AppColors.text,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
+            InkWell(
+              borderRadius: BorderRadius.circular(18),
+              onTap: () => onSelected?.call(labels[i]),
+              child: Container(
+                margin: const EdgeInsets.only(right: 9),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 11,
+                ),
+                decoration: BoxDecoration(
+                  color: labels[i] == selectedLabel
+                      ? AppColors.navy
+                      : AppColors.soft,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Text(
+                  labels[i],
+                  style: TextStyle(
+                    color: labels[i] == selectedLabel
+                        ? Colors.white
+                        : AppColors.text,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ),
@@ -6533,8 +6811,61 @@ Future<void> openDirections(BuildContext context, LatLng location) async {
   );
 }
 
+Future<void> openExternalUrl(BuildContext context, String url) async {
+  final uri = Uri.parse(url);
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    return;
+  }
+  if (!context.mounted) {
+    return;
+  }
+  ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text('Open this link: $url')));
+}
+
+void showFilterInfo(BuildContext context, String message) {
+  showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (context) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Active Filter',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              message,
+              style: const TextStyle(color: AppColors.muted, height: 1.4),
+            ),
+            const SizedBox(height: 14),
+            PrimaryButton(
+              label: appLocation.loading ? 'Locating...' : 'Refresh GPS',
+              onTap: appLocation.loading
+                  ? null
+                  : () async {
+                      await appLocation.requestCurrentLocation();
+                      if (context.mounted) Navigator.pop(context);
+                    },
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 class AyushmanCard extends StatelessWidget {
-  const AyushmanCard({super.key});
+  const AyushmanCard({super.key, required this.scheme});
+
+  final HealthSchemeInfo scheme;
 
   @override
   Widget build(BuildContext context) {
@@ -6555,8 +6886,8 @@ class AyushmanCard extends StatelessWidget {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  'Pradhan Mantri Jan Arogya Yojana',
+                Text(
+                  scheme.subtitle,
                   style: TextStyle(
                     color: AppColors.text,
                     fontSize: 12,
@@ -6564,8 +6895,8 @@ class AyushmanCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
-                  'Get cashless treatment up to Rs. 5,00,000 per family per year.',
+                Text(
+                  scheme.benefit,
                   style: TextStyle(
                     color: AppColors.muted,
                     fontSize: 12,
@@ -6579,14 +6910,7 @@ class AyushmanCard extends StatelessWidget {
                     onPressed: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const SimpleInfoScreen(
-                          title: 'Ayushman Eligibility',
-                          lines: [
-                            'Carry Aadhaar or family ID for verification.',
-                            'Check eligibility at nearby empanelled hospital desk.',
-                            'Cashless cover can go up to Rs. 5,00,000 per family per year.',
-                          ],
-                        ),
+                        builder: (_) => SchemeDetailScreen(scheme: scheme),
                       ),
                     ),
                     style: FilledButton.styleFrom(
@@ -6651,30 +6975,25 @@ class AyushmanCard extends StatelessWidget {
 }
 
 class SchemeTile extends StatelessWidget {
-  const SchemeTile({
-    super.key,
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.color,
-  });
+  const SchemeTile({super.key, required this.scheme});
 
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color color;
+  final HealthSchemeInfo scheme;
 
   @override
   Widget build(BuildContext context) {
     return AppCard(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => SchemeDetailScreen(scheme: scheme)),
+      ),
       padding: const EdgeInsets.all(14),
       margin: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
           CircleAvatar(
             radius: 22,
-            backgroundColor: color,
-            child: Icon(icon, color: AppColors.navy, size: 21),
+            backgroundColor: scheme.color,
+            child: Icon(scheme.icon, color: AppColors.navy, size: 21),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -6682,12 +7001,12 @@ class SchemeTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
+                  scheme.title,
                   style: const TextStyle(fontWeight: FontWeight.w900),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  subtitle,
+                  scheme.subtitle,
                   style: const TextStyle(color: AppColors.muted, fontSize: 12),
                 ),
               ],
@@ -6695,6 +7014,105 @@ class SchemeTile extends StatelessWidget {
           ),
           const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
         ],
+      ),
+    );
+  }
+}
+
+class SchemeDetailScreen extends StatelessWidget {
+  const SchemeDetailScreen({super.key, required this.scheme});
+
+  final HealthSchemeInfo scheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: AppPage(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+          children: [
+            TopBar(title: scheme.title),
+            const SizedBox(height: 18),
+            AppCard(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    radius: 28,
+                    backgroundColor: scheme.color,
+                    child: Icon(scheme.icon, color: AppColors.navy),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    scheme.title,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    scheme.department,
+                    style: const TextStyle(
+                      color: AppColors.navy,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    scheme.benefit,
+                    style: const TextStyle(color: AppColors.muted, height: 1.45),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Eligibility',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    scheme.eligibility,
+                    style: const TextStyle(color: AppColors.muted, height: 1.45),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Documents',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 8),
+                  for (final document in scheme.documents)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 7),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.check_circle_rounded,
+                            color: AppColors.green,
+                            size: 17,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              document,
+                              style: const TextStyle(
+                                color: AppColors.text,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            PrimaryButton(
+              label: scheme.actionLabel,
+              onTap: () => openExternalUrl(context, scheme.url),
+            ),
+          ],
+        ),
       ),
     );
   }
