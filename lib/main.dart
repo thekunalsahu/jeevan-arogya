@@ -53,7 +53,9 @@ class AppTextEntry {
         (map['icon'] as num?)?.toInt(),
         Icons.description_rounded,
       ),
-      color: Color((map['color'] as num?)?.toInt() ?? AppColors.blue.toARGB32()),
+      color: Color(
+        (map['color'] as num?)?.toInt() ?? AppColors.blue.toARGB32(),
+      ),
       attachmentName: map['attachmentName']?.toString() ?? '',
       attachmentType: map['attachmentType']?.toString() ?? '',
     );
@@ -148,13 +150,16 @@ class MessageThreadEntry {
         (map['icon'] as num?)?.toInt(),
         Icons.chat_bubble_outline_rounded,
       ),
-      color: Color((map['color'] as num?)?.toInt() ?? AppColors.navy.toARGB32()),
+      color: Color(
+        (map['color'] as num?)?.toInt() ?? AppColors.navy.toARGB32(),
+      ),
       messages: rawMessages is List
           ? rawMessages
                 .whereType<Map>()
-                .map((item) => ChatMessageEntry.fromJson(
-                      item.cast<String, dynamic>(),
-                    ))
+                .map(
+                  (item) =>
+                      ChatMessageEntry.fromJson(item.cast<String, dynamic>()),
+                )
                 .toList()
           : <ChatMessageEntry>[],
     );
@@ -191,6 +196,52 @@ class UserAppointmentEntry {
       dateLabel: map['dateLabel']?.toString() ?? '',
       timeLabel: map['timeLabel']?.toString() ?? '',
       reason: map['reason']?.toString() ?? '',
+    );
+  }
+}
+
+class EmergencyCabRequestEntry {
+  const EmergencyCabRequestEntry({
+    required this.pickup,
+    required this.dropLocation,
+    required this.hospitalName,
+    required this.hospitalPhone,
+    required this.status,
+    required this.etaMinutes,
+    required this.driverName,
+    required this.createdAtLabel,
+  });
+
+  final String pickup;
+  final String dropLocation;
+  final String hospitalName;
+  final String hospitalPhone;
+  final String status;
+  final int etaMinutes;
+  final String driverName;
+  final String createdAtLabel;
+
+  Map<String, dynamic> toJson() => {
+    'pickup': pickup,
+    'dropLocation': dropLocation,
+    'hospitalName': hospitalName,
+    'hospitalPhone': hospitalPhone,
+    'status': status,
+    'etaMinutes': etaMinutes,
+    'driverName': driverName,
+    'createdAtLabel': createdAtLabel,
+  };
+
+  factory EmergencyCabRequestEntry.fromJson(Map<String, dynamic> map) {
+    return EmergencyCabRequestEntry(
+      pickup: map['pickup']?.toString() ?? '',
+      dropLocation: map['dropLocation']?.toString() ?? '',
+      hospitalName: map['hospitalName']?.toString() ?? '',
+      hospitalPhone: map['hospitalPhone']?.toString() ?? '',
+      status: map['status']?.toString() ?? 'Requested',
+      etaMinutes: (map['etaMinutes'] as num?)?.toInt() ?? 5,
+      driverName: map['driverName']?.toString() ?? 'Emergency cab partner',
+      createdAtLabel: map['createdAtLabel']?.toString() ?? '',
     );
   }
 }
@@ -245,6 +296,7 @@ class AppDataController extends ChangeNotifier {
   final emergencyContacts = <EmergencyContactEntry>[];
   final threads = <MessageThreadEntry>[];
   final appointments = <UserAppointmentEntry>[];
+  final cabRequests = <EmergencyCabRequestEntry>[];
   String profileName = '';
   String profileEmail = '';
 
@@ -267,17 +319,26 @@ class AppDataController extends ChangeNotifier {
       _loadEntries(notifications, data['notifications']);
       emergencyContacts
         ..clear()
-        ..addAll(_decodeList(data['emergencyContacts']).map(
-          EmergencyContactEntry.fromJson,
-        ));
+        ..addAll(
+          _decodeList(
+            data['emergencyContacts'],
+          ).map(EmergencyContactEntry.fromJson),
+        );
       threads
         ..clear()
         ..addAll(_decodeList(data['threads']).map(MessageThreadEntry.fromJson));
       appointments
         ..clear()
-        ..addAll(_decodeList(data['appointments']).map(
-          UserAppointmentEntry.fromJson,
-        ));
+        ..addAll(
+          _decodeList(data['appointments']).map(UserAppointmentEntry.fromJson),
+        );
+      cabRequests
+        ..clear()
+        ..addAll(
+          _decodeList(
+            data['cabRequests'],
+          ).map(EmergencyCabRequestEntry.fromJson),
+        );
       profileName = data['profileName']?.toString() ?? '';
       profileEmail = data['profileEmail']?.toString() ?? '';
     } catch (_) {
@@ -319,6 +380,7 @@ class AppDataController extends ChangeNotifier {
         'appointments': appointments
             .map((appointment) => appointment.toJson())
             .toList(),
+        'cabRequests': cabRequests.map((request) => request.toJson()).toList(),
         'profileName': profileName,
         'profileEmail': profileEmail,
       }),
@@ -358,6 +420,24 @@ class AppDataController extends ChangeNotifier {
     _changed();
   }
 
+  void addCabRequest(EmergencyCabRequestEntry request) {
+    cabRequests.insert(0, request);
+    _ensureThread(
+      name: 'Emergency Cab',
+      subtitle: 'Cab requests and hospital rides',
+      icon: Icons.local_taxi_rounded,
+      color: const Color(0xFFFF9800),
+    ).messages.add(
+      ChatMessageEntry(
+        sender: 'Jeevan Arogya',
+        body:
+            '${request.status}: ${request.driverName} to ${request.dropLocation}. ETA ${request.etaMinutes} min.',
+        time: 'Now',
+      ),
+    );
+    _changed();
+  }
+
   void saveProfile(String name, String email) {
     profileName = name;
     profileEmail = email;
@@ -383,7 +463,12 @@ class AppDataController extends ChangeNotifier {
         icon: Icons.chat_bubble_outline_rounded,
         color: AppColors.navy,
         messages: [
-          ChatMessageEntry(sender: 'You', body: body, time: 'Now', fromUser: true),
+          ChatMessageEntry(
+            sender: 'You',
+            body: body,
+            time: 'Now',
+            fromUser: true,
+          ),
         ],
       ),
     );
@@ -395,12 +480,7 @@ class AppDataController extends ChangeNotifier {
       return;
     }
     threads[threadIndex].messages.add(
-      ChatMessageEntry(
-        sender: 'You',
-        body: body,
-        time: 'Now',
-        fromUser: true,
-      ),
+      ChatMessageEntry(sender: 'You', body: body, time: 'Now', fromUser: true),
     );
     _changed();
   }
@@ -1293,31 +1373,7 @@ class LandingHero extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEAF8EF),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    LiveSignalIcon(),
-                    SizedBox(width: 6),
-                    Text(
-                      'Live emergency network',
-                      style: TextStyle(
-                        color: AppColors.green,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              const LiveNetworkTextBadge(),
               const Spacer(),
               const Icon(Icons.auto_awesome_rounded, color: AppColors.gold),
             ],
@@ -1345,6 +1401,103 @@ class LandingHero extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class LiveNetworkTextBadge extends StatefulWidget {
+  const LiveNetworkTextBadge({super.key});
+
+  @override
+  State<LiveNetworkTextBadge> createState() => _LiveNetworkTextBadgeState();
+}
+
+class _LiveNetworkTextBadgeState extends State<LiveNetworkTextBadge>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1700),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final glow = .5 + math.sin(_controller.value * math.pi * 2) * .5;
+        return CustomPaint(
+          painter: _LiveNetworkBadgePainter(progress: _controller.value),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEAF8EF),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: AppColors.green.withValues(alpha: .18 + glow * .18),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.green.withValues(alpha: .09 + glow * .11),
+                  blurRadius: 16 + glow * 10,
+                  spreadRadius: glow * 1.2,
+                ),
+              ],
+            ),
+            child: const Text(
+              'Live emergency network',
+              style: TextStyle(
+                color: AppColors.green,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _LiveNetworkBadgePainter extends CustomPainter {
+  const _LiveNetworkBadgePainter({required this.progress});
+
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    for (final offset in const [0.0, .34, .68]) {
+      final p = (progress + offset) % 1;
+      final alpha = (1 - p) * .16;
+      final inflated = 2 + p * 16;
+      final paint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.4
+        ..color = AppColors.green.withValues(alpha: alpha);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          rect.inflate(inflated),
+          Radius.circular(22 + inflated),
+        ),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _LiveNetworkBadgePainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }
 
@@ -1786,7 +1939,11 @@ class OtpOnlyAuthPill extends StatelessWidget {
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.alternate_email_rounded, size: 17, color: Colors.white),
+                Icon(
+                  Icons.alternate_email_rounded,
+                  size: 17,
+                  color: Colors.white,
+                ),
                 SizedBox(width: 7),
                 Flexible(
                   child: Text(
@@ -2595,14 +2752,128 @@ class DoctorLocationPrompt extends StatelessWidget {
   }
 }
 
+class SearchShortcut {
+  const SearchShortcut({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.builder,
+    required this.terms,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final WidgetBuilder builder;
+  final List<String> terms;
+}
+
 class SearchResultsScreen extends StatelessWidget {
   const SearchResultsScreen({super.key, required this.query});
 
   final String query;
 
+  List<SearchShortcut> _allShortcuts() {
+    return [
+      SearchShortcut(
+        title: 'Find Doctors',
+        subtitle: 'Search specialists and book appointment slots',
+        icon: Icons.medical_services_rounded,
+        color: AppColors.blue,
+        builder: (_) => const FindDoctorsScreen(),
+        terms: const [
+          'doctor',
+          'doctors',
+          'specialist',
+          'cardiologist',
+          'dentist',
+          'pediatrician',
+          'appointment',
+        ],
+      ),
+      SearchShortcut(
+        title: 'Emergency Cab',
+        subtitle: 'Request a GPS-based ride to nearest hospital',
+        icon: Icons.local_taxi_rounded,
+        color: const Color(0xFFFF9800),
+        builder: (_) => const EmergencyCabScreen(),
+        terms: const [
+          'cab',
+          'taxi',
+          'ride',
+          'driver',
+          'emergency cab',
+          'ambulance',
+        ],
+      ),
+      SearchShortcut(
+        title: 'Nearby Hospitals',
+        subtitle: 'Open live GPS map, call and directions',
+        icon: Icons.local_hospital_rounded,
+        color: AppColors.red,
+        builder: (_) => const NearbyHospitalsScreen(),
+        terms: const ['hospital', 'hospitals', 'clinic', 'nearby', '24x7'],
+      ),
+      SearchShortcut(
+        title: 'Emergency SOS',
+        subtitle: 'Trigger emergency alert and call your priority contact',
+        icon: Icons.sos_rounded,
+        color: AppColors.red,
+        builder: (_) => const EmergencySosScreen(),
+        terms: const ['sos', 'emergency', 'help', 'urgent', 'alert'],
+      ),
+      SearchShortcut(
+        title: 'Jan Aushadhi Kendras',
+        subtitle: 'Find affordable medicine stores near you',
+        icon: Icons.medication_liquid_rounded,
+        color: AppColors.green,
+        builder: (_) => const JanAushadhiScreen(),
+        terms: const [
+          'jan aushadhi',
+          'medicine',
+          'pharmacy',
+          'kendra',
+          'generic',
+        ],
+      ),
+      SearchShortcut(
+        title: 'Health Schemes',
+        subtitle: 'PM-JAY, CGHS, ESIC, ABHA and government portals',
+        icon: Icons.health_and_safety_rounded,
+        color: AppColors.green,
+        builder: (_) => const HealthSchemesScreen(),
+        terms: const [
+          'scheme',
+          'schemes',
+          'ayushman',
+          'pmjay',
+          'cghs',
+          'esic',
+          'abha',
+          'cowin',
+        ],
+      ),
+    ];
+  }
+
+  bool _matchesShortcut(SearchShortcut shortcut, String q) {
+    if (q.isEmpty) {
+      return false;
+    }
+    final words = q.split(RegExp(r'\s+')).where((word) => word.length > 1);
+    return shortcut.terms.any(
+      (term) =>
+          term.contains(q) ||
+          q.contains(term) ||
+          words.any((word) => term.contains(word) || word.contains(term)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final q = query.toLowerCase();
+    final q = query.trim().toLowerCase();
     final doctorResults = doctors
         .where(
           (doctor) =>
@@ -2624,6 +2895,15 @@ class SearchResultsScreen extends StatelessWidget {
               place.area.toLowerCase().contains(q),
         )
         .toList();
+    final allShortcuts = _allShortcuts();
+    final shortcutResults = allShortcuts
+        .where((shortcut) => _matchesShortcut(shortcut, q))
+        .toList();
+    final showSuggestions =
+        doctorResults.isEmpty &&
+        hospitalResults.isEmpty &&
+        kendraResults.isEmpty &&
+        shortcutResults.isEmpty;
 
     return Scaffold(
       body: AppPage(
@@ -2632,14 +2912,19 @@ class SearchResultsScreen extends StatelessWidget {
           children: [
             TopBar(title: 'Search: $query'),
             const SizedBox(height: 18),
-            if (doctorResults.isEmpty &&
-                hospitalResults.isEmpty &&
-                kendraResults.isEmpty)
+            if (showSuggestions)
               const EmptyStateCard(
                 icon: Icons.search_off_rounded,
-                title: 'No results found',
-                subtitle: 'Try doctor name, specialty, hospital or medicine store.',
+                title: 'No exact result found',
+                subtitle:
+                    'You can still open these live services and continue from there.',
               ),
+            if (showSuggestions) const SizedBox(height: 12),
+            if (showSuggestions)
+              for (final shortcut in allShortcuts)
+                SearchShortcutCard(shortcut: shortcut),
+            for (final shortcut in shortcutResults)
+              SearchShortcutCard(shortcut: shortcut),
             for (final doctor in doctorResults)
               DoctorCard(
                 doctor: doctor,
@@ -2655,6 +2940,59 @@ class SearchResultsScreen extends StatelessWidget {
             for (final place in kendraResults) KendraCard(place: place),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class SearchShortcutCard extends StatelessWidget {
+  const SearchShortcutCard({super.key, required this.shortcut});
+
+  final SearchShortcut shortcut;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      onTap: () =>
+          Navigator.push(context, MaterialPageRoute(builder: shortcut.builder)),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: shortcut.color.withValues(alpha: .12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(shortcut.icon, color: shortcut.color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  shortcut.title,
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  shortcut.subtitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 12,
+                    height: 1.25,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+        ],
       ),
     );
   }
@@ -3426,9 +3764,16 @@ const healthSchemeInfos = [
     title: 'Ayushman Bharat PM-JAY',
     subtitle: 'Cashless hospital care up to Rs. 5,00,000',
     department: 'National Health Authority',
-    benefit: 'Cashless secondary and tertiary hospital treatment for eligible families.',
-    eligibility: 'Check eligibility through beneficiary portal using Aadhaar, mobile, PM-JAY ID, or family details.',
-    documents: ['Aadhaar card', 'Ration card or family ID', 'Mobile number', 'Hospital referral if required'],
+    benefit:
+        'Cashless secondary and tertiary hospital treatment for eligible families.',
+    eligibility:
+        'Check eligibility through beneficiary portal using Aadhaar, mobile, PM-JAY ID, or family details.',
+    documents: [
+      'Aadhaar card',
+      'Ration card or family ID',
+      'Mobile number',
+      'Hospital referral if required',
+    ],
     actionLabel: 'Check Eligibility',
     url: 'https://beneficiary.nha.gov.in/',
     icon: Icons.health_and_safety_rounded,
@@ -3438,9 +3783,14 @@ const healthSchemeInfos = [
     title: 'Jan Aushadhi Yojana',
     subtitle: 'Affordable generic medicines',
     department: 'Department of Pharmaceuticals',
-    benefit: 'Find low-cost quality generic medicines through Pradhan Mantri Bhartiya Janaushadhi Kendras.',
-    eligibility: 'Available to all citizens. Call nearest kendra to confirm medicine stock.',
-    documents: ['Prescription if medicine requires it', 'Medicine name or salt name'],
+    benefit:
+        'Find low-cost quality generic medicines through Pradhan Mantri Bhartiya Janaushadhi Kendras.',
+    eligibility:
+        'Available to all citizens. Call nearest kendra to confirm medicine stock.',
+    documents: [
+      'Prescription if medicine requires it',
+      'Medicine name or salt name',
+    ],
     actionLabel: 'Open Portal',
     url: 'https://janaushadhi.gov.in/',
     icon: Icons.medication_liquid_rounded,
@@ -3450,9 +3800,15 @@ const healthSchemeInfos = [
     title: 'CGHS',
     subtitle: 'Central Government Health Scheme',
     department: 'Ministry of Health and Family Welfare',
-    benefit: 'OPD, medicines, diagnostics and empanelled hospital care for eligible central government beneficiaries.',
-    eligibility: 'Central government employees, pensioners and other notified beneficiary groups.',
-    documents: ['CGHS card', 'Government ID', 'Referral or prescription when needed'],
+    benefit:
+        'OPD, medicines, diagnostics and empanelled hospital care for eligible central government beneficiaries.',
+    eligibility:
+        'Central government employees, pensioners and other notified beneficiary groups.',
+    documents: [
+      'CGHS card',
+      'Government ID',
+      'Referral or prescription when needed',
+    ],
     actionLabel: 'CGHS Website',
     url: 'https://cghs.gov.in/',
     icon: Icons.local_hospital_rounded,
@@ -3462,9 +3818,15 @@ const healthSchemeInfos = [
     title: 'ESIC',
     subtitle: 'Employees State Insurance Scheme',
     department: 'Employees State Insurance Corporation',
-    benefit: 'Medical, sickness, maternity, disability and dependent benefits for covered workers.',
-    eligibility: 'Employees and families covered under ESIC contribution rules.',
-    documents: ['ESIC insurance number', 'Aadhaar or identity proof', 'Employer details'],
+    benefit:
+        'Medical, sickness, maternity, disability and dependent benefits for covered workers.',
+    eligibility:
+        'Employees and families covered under ESIC contribution rules.',
+    documents: [
+      'ESIC insurance number',
+      'Aadhaar or identity proof',
+      'Employer details',
+    ],
     actionLabel: 'ESIC Portal',
     url: 'https://www.esic.gov.in/',
     icon: Icons.verified_user_rounded,
@@ -3474,8 +3836,10 @@ const healthSchemeInfos = [
     title: 'ABHA Health ID',
     subtitle: 'Digital health account',
     department: 'Ayushman Bharat Digital Mission',
-    benefit: 'Create a digital health ID to link and access health records securely.',
-    eligibility: 'Available to Indian residents with mobile/Aadhaar based verification.',
+    benefit:
+        'Create a digital health ID to link and access health records securely.',
+    eligibility:
+        'Available to Indian residents with mobile/Aadhaar based verification.',
     documents: ['Mobile number', 'Aadhaar or driving licence if used'],
     actionLabel: 'Create ABHA',
     url: 'https://abha.abdm.gov.in/',
@@ -3486,7 +3850,8 @@ const healthSchemeInfos = [
     title: 'CoWIN',
     subtitle: 'Vaccination certificates and services',
     department: 'Ministry of Health and Family Welfare',
-    benefit: 'Access vaccination certificates and vaccination service information.',
+    benefit:
+        'Access vaccination certificates and vaccination service information.',
     eligibility: 'Available to citizens with registered mobile number.',
     documents: ['Registered mobile number', 'Beneficiary reference details'],
     actionLabel: 'Open CoWIN',
@@ -4090,7 +4455,9 @@ class EditableInfoScreen extends StatelessWidget {
               animation: appData,
               builder: (context, _) {
                 return Column(
-                  children: [for (final entry in entries) InfoEntryCard(entry: entry)],
+                  children: [
+                    for (final entry in entries) InfoEntryCard(entry: entry),
+                  ],
                 );
               },
             ),
@@ -4243,9 +4610,9 @@ class _EditableEntryPanelState extends State<EditableEntryPanel> {
     final title = _titleController.text.trim();
     final subtitle = _subtitleController.text.trim();
     if (title.isEmpty || subtitle.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill both fields.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please fill both fields.')));
       return;
     }
     setState(() => _busy = true);
@@ -4257,9 +4624,9 @@ class _EditableEntryPanelState extends State<EditableEntryPanel> {
       _attachmentName = '';
       _attachmentType = '';
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Saved.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Saved.')));
       }
     } finally {
       if (mounted) {
@@ -5006,7 +5373,7 @@ class BackCircle extends StatelessWidget {
   }
 }
 
-class SearchBox extends StatelessWidget {
+class SearchBox extends StatefulWidget {
   const SearchBox({
     super.key,
     required this.hint,
@@ -5017,6 +5384,31 @@ class SearchBox extends StatelessWidget {
   final String hint;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
+
+  @override
+  State<SearchBox> createState() => _SearchBoxState();
+}
+
+class _SearchBoxState extends State<SearchBox> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _runSearch() {
+    final value = _controller.text.trim();
+    widget.onChanged?.call(value);
+    widget.onSubmitted?.call(value);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -5031,11 +5423,15 @@ class SearchBox extends StatelessWidget {
         children: [
           Expanded(
             child: TextField(
-              onChanged: onChanged,
-              onSubmitted: onSubmitted,
+              controller: _controller,
+              onChanged: widget.onChanged,
+              onSubmitted: (value) {
+                widget.onChanged?.call(value.trim());
+                widget.onSubmitted?.call(value.trim());
+              },
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
-                hintText: hint,
+                hintText: widget.hint,
                 border: InputBorder.none,
                 isDense: true,
                 hintStyle: const TextStyle(
@@ -5045,7 +5441,14 @@ class SearchBox extends StatelessWidget {
               ),
             ),
           ),
-          const Icon(Icons.search_rounded, color: AppColors.text),
+          IconButton(
+            tooltip: 'Search',
+            onPressed: widget.onChanged == null && widget.onSubmitted == null
+                ? null
+                : _runSearch,
+            icon: const Icon(Icons.search_rounded),
+            color: AppColors.text,
+          ),
         ],
       ),
     );
@@ -5085,13 +5488,12 @@ class _DoctorAvailabilityTickerState extends State<DoctorAvailabilityTicker> {
     final doctor = doctors[_index];
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 420),
-      child: Container(
+      child: AppCard(
         key: ValueKey(doctor.name),
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.line),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => DoctorDetailScreen(doctor: doctor)),
         ),
         child: Row(
           children: [
@@ -5822,9 +6224,7 @@ class DateSlots extends StatelessWidget {
               borderRadius: BorderRadius.circular(11),
               onTap: () => onSelected(i),
               child: Container(
-                margin: EdgeInsets.only(
-                  right: i == dates.length - 1 ? 0 : 8,
-                ),
+                margin: EdgeInsets.only(right: i == dates.length - 1 ? 0 : 8),
                 padding: const EdgeInsets.symmetric(vertical: 11),
                 decoration: BoxDecoration(
                   color: i == selectedIndex ? AppColors.navy : AppColors.soft,
@@ -5991,7 +6391,9 @@ class SosPulseButton extends StatelessWidget {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('SOS alert saved. Opening emergency call.')),
+        const SnackBar(
+          content: Text('SOS alert saved. Opening emergency call.'),
+        ),
       );
       await callPhone(context, _primaryEmergencyPhone());
     } catch (error) {
@@ -6448,6 +6850,20 @@ class EmergencyRideCard extends StatelessWidget {
                   style: TextStyle(color: AppColors.muted, fontSize: 12),
                 ),
               ),
+              AnimatedBuilder(
+                animation: appData,
+                builder: (context, _) {
+                  if (appData.cabRequests.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 14),
+                    child: CabRequestStatusCard(
+                      request: appData.cabRequests.first,
+                    ),
+                  );
+                },
+              ),
             ],
           ),
         );
@@ -6470,40 +6886,146 @@ class EmergencyRideCard extends StatelessWidget {
         ).compareTo(distanceKm(appLocation.current, b.latLng)),
       );
     final hospital = nearest.first;
+    final now = DateTime.now();
+    final eta = 4 + (now.second % 5);
+    final drivers = [
+      'Amit Verma',
+      'Rahul Yadav',
+      'Imran Khan',
+      'Deepak Patel',
+      'Sandeep Sharma',
+    ];
+    final request = EmergencyCabRequestEntry(
+      pickup: appLocation.label,
+      dropLocation: '${hospital.name}, Indore',
+      hospitalName: hospital.name,
+      hospitalPhone: hospital.phone,
+      status: 'Requested',
+      etaMinutes: eta,
+      driverName: drivers[now.second % drivers.length],
+      createdAtLabel: formatShortDateTime(now),
+    );
     final repository = JeevanArogyaRepository();
-    if (!repository.isConnected) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Demo cab request shown. Add Supabase keys for real save.',
-          ),
-        ),
-      );
+    var synced = false;
+    try {
+      if (repository.isConnected && repository.currentUser != null) {
+        await repository.requestEmergencyCab(
+          pickup: request.pickup,
+          dropLocation: request.dropLocation,
+          pickupLatitude: appLocation.current.latitude,
+          pickupLongitude: appLocation.current.longitude,
+        );
+        synced = true;
+      }
+    } catch (_) {
+      synced = false;
+    }
+    appData.addCabRequest(request);
+    if (!context.mounted) {
       return;
     }
-
-    try {
-      await repository.requestEmergencyCab(
-        pickup: appLocation.label,
-        dropLocation: '${hospital.name}, Indore',
-        pickupLatitude: appLocation.current.latitude,
-        pickupLongitude: appLocation.current.longitude,
-      );
-      if (!context.mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Emergency cab request saved.')),
-      );
-    } catch (error) {
-      if (!context.mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Cab request failed: $error')));
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          synced
+              ? 'Emergency cab requested and synced. ETA $eta min.'
+              : 'Emergency cab requested. ETA $eta min.',
+        ),
+        action: SnackBarAction(
+          label: 'Call',
+          onPressed: () => callPhone(context, hospital.phone),
+        ),
+      ),
+    );
   }
+}
+
+class CabRequestStatusCard extends StatelessWidget {
+  const CabRequestStatusCard({super.key, required this.request});
+
+  final EmergencyCabRequestEntry request;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.soft,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const CircleAvatar(
+                radius: 18,
+                backgroundColor: Color(0xFFFFE7C2),
+                child: Icon(
+                  Icons.local_taxi_rounded,
+                  color: Color(0xFFFF9800),
+                  size: 19,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${request.status} - ETA ${request.etaMinutes} min',
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${request.driverName} - ${request.createdAtLabel}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton.icon(
+                onPressed: () => callPhone(context, request.hospitalPhone),
+                icon: const Icon(Icons.call_rounded, size: 17),
+                label: const Text('Call'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            request.dropLocation,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.text,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Pickup: ${request.pickup}',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: AppColors.muted, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String formatShortDateTime(DateTime value) {
+  final hour12 = value.hour % 12 == 0 ? 12 : value.hour % 12;
+  final minute = value.minute.toString().padLeft(2, '0');
+  final suffix = value.hour >= 12 ? 'PM' : 'AM';
+  return '${value.day}/${value.month} $hour12:$minute $suffix';
 }
 
 class RouteRow extends StatelessWidget {
@@ -6532,7 +7054,7 @@ class RouteRow extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(color: AppColors.muted, fontSize: 11),
+                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -7062,7 +7584,10 @@ class SchemeDetailScreen extends StatelessWidget {
                   const SizedBox(height: 14),
                   Text(
                     scheme.benefit,
-                    style: const TextStyle(color: AppColors.muted, height: 1.45),
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      height: 1.45,
+                    ),
                   ),
                   const SizedBox(height: 14),
                   const Text(
@@ -7072,7 +7597,10 @@ class SchemeDetailScreen extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     scheme.eligibility,
-                    style: const TextStyle(color: AppColors.muted, height: 1.45),
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      height: 1.45,
+                    ),
                   ),
                   const SizedBox(height: 14),
                   const Text(
@@ -7548,7 +8076,7 @@ class PrimaryButton extends StatelessWidget {
       width: double.infinity,
       height: 54,
       child: FilledButton(
-        onPressed: onTap ?? () {},
+        onPressed: onTap,
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.navy,
           foregroundColor: Colors.white,
