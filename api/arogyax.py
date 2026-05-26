@@ -145,7 +145,12 @@ def ask_groq(data):
         data=body,
         headers={
             "Authorization": f"Bearer {api_key}",
+            "Accept": "application/json",
             "Content-Type": "application/json",
+            "User-Agent": (
+                "JeevanArogya/1.0 "
+                "(Vercel Serverless; https://github.com/thekunalsahu/jeevan-arogya)"
+            ),
         },
         method="POST",
     )
@@ -161,6 +166,11 @@ def ask_groq(data):
             message = payload.get("error", {}).get("message") or raw
         except json.JSONDecodeError:
             message = raw or error.reason
+        if error.code == 403 and "1010" in message:
+            message = (
+                "Groq Cloudflare 1010 block hua. Fresh deploy ke baad retry karo; "
+                "agar phir aaye to GROQ_API_KEY rotate karke same env name me add karo."
+            )
         raise RuntimeError(str(message)) from error
 
 
