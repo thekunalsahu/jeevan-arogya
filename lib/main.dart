@@ -709,6 +709,13 @@ String trHello(String firstName) {
   return appLanguage.isHindi ? 'नमस्ते, $firstName' : 'Hello, $firstName';
 }
 
+String tt(String text) {
+  if (!appLanguage.isHindi) {
+    return text;
+  }
+  return _exactHiText[text] ?? text;
+}
+
 const _enText = {
   'helpToday': 'How can we help\nyou today?',
   'searchHome': 'Search doctors, hospitals, services...',
@@ -780,6 +787,229 @@ const _hiText = {
       'अपनी स्वास्थ्य समस्या बताएं। मैं रिपोर्ट इमेज/टेक्स्ट पढ़कर पास के डॉक्टर, अस्पताल और मेडिकल स्टोर के हिसाब से मदद करूंगा।',
 };
 
+const _exactHiText = {
+  'Home': 'होम',
+  'Appointments': 'अपॉइंटमेंट',
+  'Messages': 'मैसेज',
+  'Profile': 'प्रोफाइल',
+  'SOS': 'SOS',
+  'Find Doctors': 'डॉक्टर खोजें',
+  'Search specialists and book appointment slots':
+      'विशेषज्ञ खोजें और अपॉइंटमेंट बुक करें',
+  'Emergency Cab': 'इमरजेंसी कैब',
+  'Request a GPS-based ride to nearest hospital':
+      'नजदीकी अस्पताल तक GPS आधारित राइड',
+  'Nearby Hospitals': 'नजदीकी अस्पताल',
+  'Open live GPS map, call and directions': 'GPS मैप, कॉल और दिशा देखें',
+  'Emergency SOS': 'इमरजेंसी SOS',
+  'Trigger emergency alert and call your priority contact':
+      'इमरजेंसी अलर्ट और प्राथमिक संपर्क को कॉल',
+  'Medical Stores': 'मेडिकल स्टोर',
+  'Find affordable medicine stores near you': 'पास के दवा स्टोर खोजें',
+  'Health Schemes': 'स्वास्थ्य योजनाएं',
+  'PM-JAY, CGHS, ESIC, ABHA and government portals':
+      'PM-JAY, CGHS, ESIC, ABHA और सरकारी पोर्टल',
+  'Health Records': 'हेल्थ रिकॉर्ड',
+  'Prescriptions': 'प्रिस्क्रिप्शन',
+  'Allergies & Conditions': 'एलर्जी और बीमारियां',
+  'Vital Health Info': 'जरूरी स्वास्थ्य जानकारी',
+  'My Health': 'मेरा स्वास्थ्य',
+  'My Account': 'मेरा अकाउंट',
+  'Emergency Contacts': 'इमरजेंसी संपर्क',
+  'Address Book': 'एड्रेस बुक',
+  'Notification Settings': 'नोटिफिकेशन सेटिंग्स',
+  'Help & Support': 'मदद और सपोर्ट',
+  'About Us': 'हमारे बारे में',
+  'Clear Saved Data': 'सेव डेटा मिटाएं',
+  'Logout': 'लॉगआउट',
+  'Edit Profile': 'प्रोफाइल एडिट करें',
+  'Save Profile': 'प्रोफाइल सेव करें',
+  'New Message': 'नया मैसेज',
+  'Send Message': 'मैसेज भेजें',
+  'Search': 'खोजें',
+  'No exact result found': 'सटीक परिणाम नहीं मिला',
+  'You can still open these live services and continue from there.':
+      'आप इन सेवाओं को खोलकर आगे बढ़ सकते हैं।',
+  'Doctors near your area': 'आपके पास डॉक्टर',
+  'Use GPS to personalize doctor availability':
+      'डॉक्टर उपलब्धता के लिए GPS इस्तेमाल करें',
+  'Detecting GPS...': 'GPS खोजा जा रहा है...',
+  'Enable GPS Location': 'GPS लोकेशन चालू करें',
+  'GPS...': 'GPS...',
+  'GPS': 'GPS',
+  'Filter Doctors': 'डॉक्टर फिल्टर करें',
+  'All': 'सभी',
+  'Doctor': 'डॉक्टर',
+  'Cardiologist': 'हृदय रोग विशेषज्ञ',
+  'Orthopedic': 'हड्डी रोग विशेषज्ञ',
+  'General Physician': 'जनरल फिजिशियन',
+  'ENT': 'ENT',
+  'Neurologist': 'न्यूरोलॉजिस्ट',
+  'Dentist': 'डेंटिस्ट',
+  'Pediatrician': 'बाल रोग विशेषज्ञ',
+  'Gynecologist': 'स्त्री रोग विशेषज्ञ',
+  'Dermatologist': 'त्वचा रोग विशेषज्ञ',
+  'Fetching doctors': 'डॉक्टर खोजे जा रहे हैं',
+  'OpenStreetMap se live nearby doctor listings aa rahi hain.':
+      'OpenStreetMap से पास के डॉक्टर लोड हो रहे हैं।',
+  'No verified live doctors found': 'पास में डॉक्टर नहीं मिले',
+  'Try All filter or refresh GPS.': 'सभी फिल्टर चुनें या GPS रिफ्रेश करें।',
+  'Live OpenStreetMap doctor data': 'OpenStreetMap डॉक्टर डेटा',
+  'About Doctor': 'डॉक्टर के बारे में',
+  'Read more': 'और पढ़ें',
+  'Next Available Slots': 'अगले उपलब्ध स्लॉट',
+  'Reason for visit': 'विजिट का कारण',
+  'Book Appointment': 'अपॉइंटमेंट बुक करें',
+  'Consultation Fee': 'कंसल्टेशन फीस',
+  'Available Today': 'आज उपलब्ध',
+  'Location': 'लोकेशन',
+  'Contact for details': 'जानकारी के लिए संपर्क करें',
+  'Call': 'कॉल',
+  'Call to confirm': 'कन्फर्म करने के लिए कॉल करें',
+  'Medical Store': 'मेडिकल स्टोर',
+  'Jan Aushadhi': 'जन औषधि',
+  'Filter Medical Stores': 'मेडिकल स्टोर फिल्टर करें',
+  'All medical stores': 'सभी मेडिकल स्टोर',
+  'Jan Aushadhi only': 'केवल जन औषधि',
+  'No medical store live result found': 'मेडिकल स्टोर नहीं मिला',
+  'OpenStreetMap me nearby medical store listing nahi mili.':
+      'OpenStreetMap में पास की मेडिकल स्टोर लिस्टिंग नहीं मिली।',
+  'Add Health Record': 'हेल्थ रिकॉर्ड जोड़ें',
+  'Report name': 'रिपोर्ट का नाम',
+  'Notes, file link, doctor, date': 'नोट्स, फाइल, डॉक्टर, तारीख',
+  'Save Record': 'रिकॉर्ड सेव करें',
+  'Upload File': 'फाइल अपलोड',
+  'Upload Image': 'इमेज अपलोड',
+  'Save': 'सेव',
+  'Title': 'शीर्षक',
+  'Details': 'जानकारी',
+  'No uploaded health records yet.': 'अभी कोई हेल्थ रिकॉर्ड अपलोड नहीं है।',
+  'ArogyaX thinking': 'ArogyaX सोच रहा है',
+  'Report, location and nearby care context is being checked.':
+      'रिपोर्ट, लोकेशन और पास की स्वास्थ्य जानकारी देखी जा रही है।',
+  'Change theme': 'थीम बदलें',
+  'Light': 'लाइट',
+  'Dark': 'डार्क',
+  '100% Black': '100% ब्लैक',
+  'Notifications': 'नोटिफिकेशन',
+  'No notifications yet': 'अभी कोई नोटिफिकेशन नहीं',
+  'New appointment, SOS and cab updates will appear here after activity.':
+      'अपॉइंटमेंट, SOS और कैब अपडेट गतिविधि के बाद यहां दिखेंगे।',
+  'Enable GPS to find doctors': 'डॉक्टर खोजने के लिए GPS चालू करें',
+  'Doctor availability and nearby appointment details unlock after live GPS permission.':
+      'लाइव GPS अनुमति के बाद डॉक्टर उपलब्धता और पास के स्लॉट दिखेंगे।',
+  'Enable GPS for Medical Stores': 'मेडिकल स्टोर खोजने के लिए GPS चालू करें',
+  'Nearest store list, distance and map are hidden until live GPS permission is allowed.':
+      'लाइव GPS अनुमति मिलने तक नजदीकी स्टोर, दूरी और मैप छिपे रहेंगे।',
+  'Fetching Medical Stores': 'मेडिकल स्टोर खोजे जा रहे हैं',
+  'OpenStreetMap se live pharmacy data load ho raha hai.':
+      'OpenStreetMap से पास की फार्मेसी जानकारी लोड हो रही है।',
+  'No appointments yet': 'अभी कोई अपॉइंटमेंट नहीं',
+  'Book a doctor appointment and it will appear here permanently.':
+      'डॉक्टर अपॉइंटमेंट बुक करें, वह यहां स्थायी रूप से दिखेगा।',
+  'No messages yet': 'अभी कोई मैसेज नहीं',
+  'Start a message or book appointments to create live threads.':
+      'मैसेज शुरू करें या अपॉइंटमेंट बुक करें, थ्रेड यहां दिखेंगे।',
+  'Start Message': 'मैसेज शुरू करें',
+  'New': 'नया',
+  'Confirm Emergency Ride': 'इमरजेंसी राइड कन्फर्म करें',
+  'Pickup Location': 'पिकअप लोकेशन',
+  'Drop Location': 'ड्रॉप लोकेशन',
+  'Ride Type': 'राइड प्रकार',
+  'Payment Method': 'पेमेंट तरीका',
+  'Select ride type': 'राइड प्रकार चुनें',
+  'Select payment': 'पेमेंट चुनें',
+  'Hatchback': 'हैचबैक',
+  'Sedan': 'सेडान',
+  'SUV': 'SUV',
+  'Ambulance': 'एम्बुलेंस',
+  'Cash': 'कैश',
+  'Online': 'ऑनलाइन',
+  'Request Emergency Cab': 'इमरजेंसी कैब रिक्वेस्ट करें',
+  'Requesting cab...': 'कैब रिक्वेस्ट हो रही है...',
+  'Drivers will be notified about the emergency':
+      'ड्राइवरों को इमरजेंसी के बारे में सूचित किया जाएगा',
+  'Cab booking saved': 'कैब बुकिंग सेव हुई',
+  'Cab booking requested': 'कैब बुकिंग रिक्वेस्ट हुई',
+  'Live emergency route': 'लाइव इमरजेंसी रूट',
+  'Hospitals near you': 'आपके पास अस्पताल',
+  'Medical stores near you': 'आपके पास मेडिकल स्टोर',
+  'Directions': 'दिशा',
+  'Call Now': 'अभी कॉल करें',
+  'Finding nearby hospitals': 'पास के अस्पताल खोजे जा रहे हैं',
+  'Fetching live OpenStreetMap results around your GPS.':
+      'आपके GPS के आसपास OpenStreetMap परिणाम लोड हो रहे हैं।',
+  'No live hospital found nearby': 'पास में लाइव अस्पताल नहीं मिला',
+  'Tap GPS again or call emergency services.':
+      'GPS फिर दबाएं या इमरजेंसी सेवा को कॉल करें।',
+  'Enable GPS for emergency cab': 'इमरजेंसी कैब के लिए GPS चालू करें',
+  'Enable GPS for nearby hospitals': 'पास के अस्पतालों के लिए GPS चालू करें',
+  'No verified live hospitals found': 'पास में सत्यापित अस्पताल नहीं मिले',
+  'Refresh GPS and try again.': 'GPS रिफ्रेश करें और फिर कोशिश करें।',
+  'Ayushman Bharat': 'आयुष्मान भारत',
+  'Check Eligibility': 'पात्रता जांचें',
+  'Eligibility': 'पात्रता',
+  'Documents': 'दस्तावेज',
+  'Ayushman Bharat PM-JAY': 'आयुष्मान भारत PM-JAY',
+  'Cashless hospital care up to Rs. 5,00,000':
+      '₹5,00,000 तक कैशलेस अस्पताल इलाज',
+  'Jan Aushadhi Yojana': 'जन औषधि योजना',
+  'Affordable generic medicines': 'सस्ती जेनेरिक दवाइयां',
+  'Central Government Health Scheme': 'केंद्रीय सरकारी स्वास्थ्य योजना',
+  'Employees State Insurance Scheme': 'कर्मचारी राज्य बीमा योजना',
+  'ABHA Health ID': 'ABHA हेल्थ ID',
+  'Digital health account': 'डिजिटल हेल्थ अकाउंट',
+  'Vaccination certificates and services': 'टीकाकरण प्रमाणपत्र और सेवाएं',
+  'Open File': 'फाइल खोलें',
+  'Attachment preview unavailable': 'अटैचमेंट प्रीव्यू उपलब्ध नहीं',
+  'File saved in app data': 'फाइल ऐप डेटा में सेव है',
+  'Clear saved data?': 'सेव डेटा मिटाएं?',
+  'Cancel': 'रद्द करें',
+  'Clear Data': 'डेटा मिटाएं',
+  'Delete entry?': 'एंट्री मिटाएं?',
+  'Delete': 'मिटाएं',
+  'Saving...': 'सेव हो रहा है...',
+  'Other Government Schemes': 'अन्य सरकारी योजनाएं',
+  'Messages, cab requests, doctor appointments and activity notifications saved on this device will be deleted.':
+      'इस डिवाइस पर सेव मैसेज, कैब रिक्वेस्ट, डॉक्टर अपॉइंटमेंट और गतिविधि नोटिफिकेशन मिटा दिए जाएंगे।',
+  'Saved app activity cleared.': 'सेव ऐप गतिविधि मिटा दी गई।',
+  'This saved item and its uploaded attachment will be removed from this device.':
+      'यह सेव आइटम और उसका अपलोडेड अटैचमेंट इस डिवाइस से हट जाएगा।',
+  'Deleted.': 'मिटा दिया गया।',
+  'Add Contact': 'संपर्क जोड़ें',
+  'Name': 'नाम',
+  'Phone number': 'फोन नंबर',
+  'Relation': 'रिश्ता',
+  'Name and phone are required.': 'नाम और फोन नंबर जरूरी हैं।',
+  'Full name': 'पूरा नाम',
+  'Email address': 'ईमेल पता',
+  'Contact number': 'संपर्क नंबर',
+  'Enter a valid name and email.': 'सही नाम और ईमेल दर्ज करें।',
+  'Doctor, hospital, or contact name': 'डॉक्टर, अस्पताल या संपर्क का नाम',
+  'Message': 'मैसेज',
+  'Name and message are required.': 'नाम और मैसेज जरूरी हैं।',
+  'Type a message...': 'मैसेज लिखें...',
+  'Custom message': 'कस्टम मैसेज',
+  'Address or landmark': 'पता या लैंडमार्क',
+  'Using your live location': 'आपकी लाइव लोकेशन इस्तेमाल हो रही है',
+  'Location based care': 'लोकेशन आधारित देखभाल',
+  'Live hospital data will appear after fetch':
+      'फेच होने के बाद लाइव अस्पताल डेटा दिखेगा',
+  'Enable GPS to fetch nearby care': 'पास की देखभाल खोजने के लिए GPS चालू करें',
+  'Locating': 'लोकेशन खोज रहे हैं',
+  'Use GPS': 'GPS इस्तेमाल करें',
+  'Finding live doctors': 'लाइव डॉक्टर खोजे जा रहे हैं',
+  'Nearby doctor listings are loading.':
+      'पास के डॉक्टरों की सूची लोड हो रही है।',
+  'Next doctor available': 'अगला डॉक्टर उपलब्ध',
+  'Jeevan Arogya connects patients to nearby care.':
+      'जीवन आरोग्य मरीजों को पास की स्वास्थ्य सेवा से जोड़ता है।',
+  'Maps use OpenStreetMap tiles.':
+      'मैप में OpenStreetMap टाइल्स इस्तेमाल होती हैं।',
+  'Supabase powers auth and live database features.':
+      'Auth और लाइव डेटाबेस फीचर Supabase से चलते हैं।',
+};
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SupabaseConfig.initialize();
@@ -828,22 +1058,28 @@ class JeevanArogyaApp extends StatelessWidget {
           ),
           builder: (context, child) => ColoredBox(
             color: palette.shell,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                if (constraints.maxWidth >= 800) {
-                  return child ?? const SizedBox.shrink();
-                }
-                final width = constraints.maxWidth < 430
-                    ? constraints.maxWidth
-                    : 430.0;
-                return Center(
-                  child: SizedBox(
-                    width: width,
-                    height: constraints.maxHeight,
-                    child: child ?? const SizedBox.shrink(),
-                  ),
-                );
-              },
+            child: DefaultTextStyle.merge(
+              style: TextStyle(color: palette.text),
+              child: IconTheme.merge(
+                data: IconThemeData(color: palette.text),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth >= 800) {
+                      return child ?? const SizedBox.shrink();
+                    }
+                    final width = constraints.maxWidth < 430
+                        ? constraints.maxWidth
+                        : 430.0;
+                    return Center(
+                      child: SizedBox(
+                        width: width,
+                        height: constraints.maxHeight,
+                        child: child ?? const SizedBox.shrink(),
+                      ),
+                    );
+                  },
+                ),
+              ),
             ),
           ),
           home: const AuthGate(),
@@ -2753,7 +2989,7 @@ class PillActionButton extends StatelessWidget {
       child: FilledButton.icon(
         onPressed: onTap,
         icon: Icon(icon, size: 20),
-        label: Text(label),
+        label: Text(tt(label)),
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.navy,
           foregroundColor: Colors.white,
@@ -3005,35 +3241,35 @@ class DesktopRail extends StatelessWidget {
                   color: AppColors.navy,
                   fontWeight: FontWeight.w900,
                 ),
-                unselectedLabelTextStyle: const TextStyle(
-                  color: AppColors.muted,
+                unselectedLabelTextStyle: TextStyle(
+                  color: palette.muted,
                   fontWeight: FontWeight.w700,
                 ),
-                destinations: const [
+                destinations: [
                   NavigationRailDestination(
-                    icon: Icon(Icons.home_outlined),
-                    selectedIcon: Icon(Icons.home_rounded),
-                    label: Text('Home'),
+                    icon: const Icon(Icons.home_outlined),
+                    selectedIcon: const Icon(Icons.home_rounded),
+                    label: Text(tt('Home')),
                   ),
                   NavigationRailDestination(
-                    icon: Icon(Icons.calendar_today_outlined),
-                    selectedIcon: Icon(Icons.calendar_month_rounded),
-                    label: Text('Appointments'),
+                    icon: const Icon(Icons.calendar_today_outlined),
+                    selectedIcon: const Icon(Icons.calendar_month_rounded),
+                    label: Text(tt('Appointments')),
                   ),
                   NavigationRailDestination(
-                    icon: Icon(Icons.sos_rounded),
-                    selectedIcon: Icon(Icons.sos_rounded),
-                    label: Text('SOS'),
+                    icon: const Icon(Icons.sos_rounded),
+                    selectedIcon: const Icon(Icons.sos_rounded),
+                    label: Text(tt('SOS')),
                   ),
                   NavigationRailDestination(
-                    icon: Icon(Icons.chat_bubble_outline_rounded),
-                    selectedIcon: Icon(Icons.chat_bubble_rounded),
-                    label: Text('Messages'),
+                    icon: const Icon(Icons.chat_bubble_outline_rounded),
+                    selectedIcon: const Icon(Icons.chat_bubble_rounded),
+                    label: Text(tt('Messages')),
                   ),
                   NavigationRailDestination(
-                    icon: Icon(Icons.person_outline_rounded),
-                    selectedIcon: Icon(Icons.person_rounded),
-                    label: Text('Profile'),
+                    icon: const Icon(Icons.person_outline_rounded),
+                    selectedIcon: const Icon(Icons.person_rounded),
+                    label: Text(tt('Profile')),
                   ),
                 ],
               ),
@@ -3129,16 +3365,6 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               ServiceItem(
-                icon: Icons.psychology_alt_rounded,
-                title: tr('aiAssistant'),
-                subtitle: tr('aiSubtitle'),
-                color: const Color(0xFF8B5CF6),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ArogyaXScreen()),
-                ),
-              ),
-              ServiceItem(
                 icon: Icons.local_taxi_rounded,
                 title: tr('emergencyCab'),
                 subtitle: tr('bookCabEmergency'),
@@ -3230,6 +3456,79 @@ class HomeScreen extends StatelessWidget {
               );
             },
           ),
+          const SizedBox(height: 18),
+          const ArogyaXHomeCard(),
+        ],
+      ),
+    );
+  }
+}
+
+class ArogyaXHomeCard extends StatelessWidget {
+  const ArogyaXHomeCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
+    return AppCard(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ArogyaXScreen()),
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Row(
+        children: [
+          Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF8B5CF6), AppColors.blue],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF8B5CF6).withValues(alpha: .28),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.psychology_alt_rounded,
+              color: Colors.white,
+              size: 28,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  tr('aiAssistant'),
+                  style: TextStyle(
+                    color: palette.text,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  tr('assistantIntro'),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: palette.muted,
+                    fontSize: 12,
+                    height: 1.3,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.chevron_right_rounded, color: palette.muted),
         ],
       ),
     );
@@ -3649,6 +3948,7 @@ class LocationInsightCard extends StatelessWidget {
     return AnimatedBuilder(
       animation: Listenable.merge([appLocation, liveHealthData]),
       builder: (context, _) {
+        final palette = AppThemePalette.current;
         final nearestHospital = liveHealthData.nearbyHospitals(
           appLocation.current,
         );
@@ -3675,22 +3975,29 @@ class LocationInsightCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      appLocation.resolved
-                          ? 'Using your live location'
-                          : 'Location based care',
-                      style: const TextStyle(fontWeight: FontWeight.w900),
+                      tt(
+                        appLocation.resolved
+                            ? 'Using your live location'
+                            : 'Location based care',
+                      ),
+                      style: TextStyle(
+                        color: palette.text,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                     const SizedBox(height: 3),
                     Text(
                       hospital == null
-                          ? (appLocation.resolved
-                                ? 'Live hospital data will appear after fetch'
-                                : 'Enable GPS to fetch nearby care')
+                          ? tt(
+                              appLocation.resolved
+                                  ? 'Live hospital data will appear after fetch'
+                                  : 'Enable GPS to fetch nearby care',
+                            )
                           : '${hospital.name} - ${hospital.distanceFrom(appLocation.current)}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.muted,
+                      style: TextStyle(
+                        color: palette.muted,
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                       ),
@@ -3722,7 +4029,9 @@ class LocationInsightCard extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.gps_fixed_rounded, size: 17),
-                label: Text(appLocation.loading ? 'Locating' : 'Use GPS'),
+                label: Text(
+                  appLocation.loading ? tt('Locating') : tt('Use GPS'),
+                ),
               ),
             ],
           ),
@@ -3746,6 +4055,7 @@ class LocationRequiredPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return AnimatedBuilder(
       animation: appLocation,
       builder: (context, _) {
@@ -3771,17 +4081,18 @@ class LocationRequiredPanel extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          title,
-                          style: const TextStyle(
+                          tt(title),
+                          style: TextStyle(
+                            color: palette.text,
                             fontSize: 16,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          subtitle,
-                          style: const TextStyle(
-                            color: AppColors.muted,
+                          tt(subtitle),
+                          style: TextStyle(
+                            color: palette.muted,
                             height: 1.35,
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -3806,8 +4117,8 @@ class LocationRequiredPanel extends StatelessWidget {
               const SizedBox(height: 16),
               PillActionButton(
                 label: appLocation.loading
-                    ? 'Detecting GPS...'
-                    : 'Enable GPS Location',
+                    ? tt('Detecting GPS...')
+                    : tt('Enable GPS Location'),
                 icon: Icons.gps_fixed_rounded,
                 onTap: appLocation.loading
                     ? null
@@ -3829,6 +4140,7 @@ class DoctorLocationPrompt extends StatelessWidget {
     return AnimatedBuilder(
       animation: appLocation,
       builder: (context, _) {
+        final palette = AppThemePalette.current;
         return AppCard(
           padding: const EdgeInsets.all(14),
           child: Row(
@@ -3850,19 +4162,22 @@ class DoctorLocationPrompt extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Doctors near your area',
-                      style: TextStyle(fontWeight: FontWeight.w900),
+                    Text(
+                      tt('Doctors near your area'),
+                      style: TextStyle(
+                        color: palette.text,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                     const SizedBox(height: 3),
                     Text(
                       appLocation.resolved
                           ? 'Using ${appLocation.label}'
-                          : 'Use GPS to personalize doctor availability',
+                          : tt('Use GPS to personalize doctor availability'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.muted,
+                      style: TextStyle(
+                        color: palette.muted,
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                       ),
@@ -3881,7 +4196,7 @@ class DoctorLocationPrompt extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.gps_fixed_rounded, size: 17),
-                label: Text(appLocation.loading ? 'GPS...' : 'GPS'),
+                label: Text(appLocation.loading ? tt('GPS...') : tt('GPS')),
               ),
             ],
           ),
@@ -4092,6 +4407,7 @@ class SearchShortcutCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return AppCard(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
@@ -4114,16 +4430,19 @@ class SearchShortcutCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  shortcut.title,
-                  style: const TextStyle(fontWeight: FontWeight.w900),
+                  tt(shortcut.title),
+                  style: TextStyle(
+                    color: palette.text,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  shortcut.subtitle,
+                  tt(shortcut.subtitle),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.muted,
+                  style: TextStyle(
+                    color: palette.muted,
                     fontSize: 12,
                     height: 1.25,
                   ),
@@ -4131,7 +4450,7 @@ class SearchShortcutCard extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+          Icon(Icons.chevron_right_rounded, color: palette.muted),
         ],
       ),
     );
@@ -4150,6 +4469,7 @@ class LiveHealthLoadingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return AppCard(
       padding: const EdgeInsets.all(22),
       child: Row(
@@ -4165,14 +4485,17 @@ class LiveHealthLoadingCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.w900),
+                  tt(title),
+                  style: TextStyle(
+                    color: palette.text,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: AppColors.muted,
+                  tt(subtitle),
+                  style: TextStyle(
+                    color: palette.muted,
                     fontSize: 12,
                     height: 1.35,
                   ),
@@ -4200,26 +4523,31 @@ class EmptyStateCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return AppCard(
       padding: const EdgeInsets.all(22),
       child: Column(
         children: [
           CircleAvatar(
             radius: 28,
-            backgroundColor: AppColors.soft,
+            backgroundColor: palette.soft,
             child: Icon(icon, color: AppColors.navy),
           ),
           const SizedBox(height: 14),
           Text(
-            title,
+            tt(title),
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+            style: TextStyle(
+              color: palette.text,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
           ),
           const SizedBox(height: 6),
           Text(
-            subtitle,
+            tt(subtitle),
             textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.muted, height: 1.35),
+            style: TextStyle(color: palette.muted, height: 1.35),
           ),
         ],
       ),
@@ -4306,6 +4634,7 @@ class _FindDoctorsScreenState extends State<FindDoctorsScreen> {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
+      backgroundColor: AppThemePalette.current.card,
       builder: (context) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
@@ -4313,9 +4642,13 @@ class _FindDoctorsScreenState extends State<FindDoctorsScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Filter Doctors',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+              Text(
+                tt('Filter Doctors'),
+                style: TextStyle(
+                  color: AppThemePalette.current.text,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
               const SizedBox(height: 12),
               Wrap(
@@ -4336,7 +4669,7 @@ class _FindDoctorsScreenState extends State<FindDoctorsScreen> {
                     'Gynecologist',
                   ])
                     ChoiceChip(
-                      label: Text(label),
+                      label: Text(tt(label)),
                       selected: _specialty == label,
                       onSelected: (_) {
                         setState(() => _specialty = label);
@@ -4452,6 +4785,7 @@ class DemoModeNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 12),
@@ -4461,9 +4795,9 @@ class DemoModeNotice extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
       ),
       child: Text(
-        text,
-        style: const TextStyle(
-          color: AppColors.text,
+        tt(text),
+        style: TextStyle(
+          color: palette.text,
           fontSize: 12,
           fontWeight: FontWeight.w800,
         ),
@@ -4514,6 +4848,7 @@ class DoctorDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return Scaffold(
       body: AppPage(
         child: ListView(
@@ -4525,7 +4860,7 @@ class DoctorDetailScreen extends StatelessWidget {
                 const Spacer(),
                 IconButton(
                   onPressed: () => shareDoctorDetails(context, doctor),
-                  icon: const Icon(Icons.share_outlined, color: AppColors.navy),
+                  icon: Icon(Icons.share_outlined, color: palette.text),
                 ),
               ],
             ),
@@ -4538,7 +4873,8 @@ class DoctorDetailScreen extends StatelessWidget {
                   Text(
                     doctor.name,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
+                      color: palette.text,
                       fontSize: 23,
                       fontWeight: FontWeight.w900,
                     ),
@@ -4555,10 +4891,7 @@ class DoctorDetailScreen extends StatelessWidget {
                   Text(
                     '${doctor.experience}  -  ${doctor.degree} (${doctor.specialty})',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: palette.muted, fontSize: 12),
                   ),
                   const SizedBox(height: 8),
                   RatingLine(rating: doctor.rating, reviews: doctor.reviews),
@@ -4593,14 +4926,18 @@ class DoctorDetailScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 24),
-            const Text(
-              'About Doctor',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+            Text(
+              tt('About Doctor'),
+              style: TextStyle(
+                color: palette.text,
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+              ),
             ),
             const SizedBox(height: 10),
             Text(
               doctor.about.isEmpty ? doctorFallbackAbout(doctor) : doctor.about,
-              style: const TextStyle(color: AppColors.muted, height: 1.45),
+              style: TextStyle(color: palette.muted, height: 1.45),
             ),
             TextButton(
               onPressed: () => showDoctorInfoSheet(context, doctor),
@@ -4608,7 +4945,7 @@ class DoctorDetailScreen extends StatelessWidget {
                 alignment: Alignment.centerLeft,
                 padding: EdgeInsets.zero,
               ),
-              child: const Text('Read more'),
+              child: Text(tt('Read more')),
             ),
             const SizedBox(height: 14),
             AppointmentBookingPanel(doctor: doctor),
@@ -4723,12 +5060,17 @@ class _AppointmentBookingPanelState extends State<AppointmentBookingPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Next Available Slots',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+        Text(
+          tt('Next Available Slots'),
+          style: TextStyle(
+            color: palette.text,
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+          ),
         ),
         const SizedBox(height: 12),
         DateSlots(
@@ -4744,9 +5086,9 @@ class _AppointmentBookingPanelState extends State<AppointmentBookingPanel> {
         TextField(
           controller: _reasonController,
           decoration: InputDecoration(
-            hintText: 'Reason for visit',
+            hintText: tt('Reason for visit'),
             filled: true,
-            fillColor: AppColors.soft,
+            fillColor: palette.soft,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
@@ -5165,6 +5507,7 @@ class HealthSchemesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return Scaffold(
       body: AppPage(
         child: ListView(
@@ -5174,9 +5517,13 @@ class HealthSchemesScreen extends StatelessWidget {
             const SizedBox(height: 18),
             AyushmanCard(scheme: healthSchemeInfos.first),
             const SizedBox(height: 22),
-            const Text(
-              'Other Government Schemes',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+            Text(
+              tt('Other Government Schemes'),
+              style: TextStyle(
+                color: palette.text,
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+              ),
             ),
             const SizedBox(height: 12),
             for (final scheme in healthSchemeInfos.skip(1))
@@ -5195,6 +5542,7 @@ class HealthRecordsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return Scaffold(
       body: AppPage(
         child: ListView(
@@ -5224,18 +5572,16 @@ class HealthRecordsScreen extends StatelessWidget {
                       children: [
                         Text(
                           profile.name,
-                          style: const TextStyle(
+                          style: TextStyle(
+                            color: palette.text,
                             fontSize: 18,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
                         const SizedBox(height: 4),
-                        const Text(
-                          'No uploaded health records yet.',
-                          style: TextStyle(
-                            color: AppColors.muted,
-                            fontSize: 12,
-                          ),
+                        Text(
+                          tt('No uploaded health records yet.'),
+                          style: TextStyle(color: palette.muted, fontSize: 12),
                         ),
                       ],
                     ),
@@ -5398,6 +5744,7 @@ class _JanAushadhiScreenState extends State<JanAushadhiScreen> {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
+      backgroundColor: AppThemePalette.current.card,
       builder: (context) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
@@ -5405,13 +5752,17 @@ class _JanAushadhiScreenState extends State<JanAushadhiScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Filter Medical Stores',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+              Text(
+                tt('Filter Medical Stores'),
+                style: TextStyle(
+                  color: AppThemePalette.current.text,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
               const SizedBox(height: 12),
               ChoiceChip(
-                label: const Text('All medical stores'),
+                label: Text(tt('All medical stores')),
                 selected: _filter == MedicalStoreFilter.all,
                 onSelected: (_) {
                   setState(() => _filter = MedicalStoreFilter.all);
@@ -5420,7 +5771,7 @@ class _JanAushadhiScreenState extends State<JanAushadhiScreen> {
               ),
               const SizedBox(height: 8),
               ChoiceChip(
-                label: const Text('Jan Aushadhi only'),
+                label: Text(tt('Jan Aushadhi only')),
                 selected: _filter == MedicalStoreFilter.janAushadhi,
                 onSelected: (_) {
                   setState(() => _filter = MedicalStoreFilter.janAushadhi);
@@ -5526,7 +5877,7 @@ class MessagesScreen extends StatelessWidget {
                         ),
                       ),
                       icon: const Icon(Icons.add_comment_rounded),
-                      label: const Text('New'),
+                      label: Text(tt('New')),
                     ),
                   ),
                   for (var i = 0; i < appData.threads.length; i++)
@@ -5566,6 +5917,7 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return AppPage(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 112),
@@ -5601,9 +5953,13 @@ class ProfileScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          const Text(
-            'My Health',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+          Text(
+            tt('My Health'),
+            style: TextStyle(
+              color: palette.text,
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+            ),
           ),
           const SizedBox(height: 10),
           ProfileMenuItem(
@@ -5662,9 +6018,13 @@ class ProfileScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          const Text(
-            'My Account',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+          Text(
+            tt('My Account'),
+            style: TextStyle(
+              color: palette.text,
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+            ),
           ),
           const SizedBox(height: 10),
           ProfileMenuItem(
@@ -5762,20 +6122,25 @@ Future<void> showClearSavedDataDialog(BuildContext context) async {
       final palette = AppThemePalette.current;
       return AlertDialog(
         backgroundColor: palette.card,
-        title: Text('Clear saved data?', style: TextStyle(color: palette.text)),
+        title: Text(
+          tt('Clear saved data?'),
+          style: TextStyle(color: palette.text),
+        ),
         content: Text(
-          'Messages, cab requests, doctor appointments and activity notifications saved on this device will be deleted.',
+          tt(
+            'Messages, cab requests, doctor appointments and activity notifications saved on this device will be deleted.',
+          ),
           style: TextStyle(color: palette.muted),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(tt('Cancel')),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.red),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Clear Data'),
+            child: Text(tt('Clear Data')),
           ),
         ],
       );
@@ -5785,7 +6150,7 @@ Future<void> showClearSavedDataDialog(BuildContext context) async {
     appData.clearActivityData();
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Saved app activity cleared.')),
+        SnackBar(content: Text(tt('Saved app activity cleared.'))),
       );
     }
   }
@@ -5799,6 +6164,7 @@ class SimpleInfoScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return Scaffold(
       body: AppPage(
         child: ListView(
@@ -5818,8 +6184,11 @@ class SimpleInfoScreen extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        line,
-                        style: const TextStyle(fontWeight: FontWeight.w800),
+                        tt(line),
+                        style: TextStyle(
+                          color: palette.text,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                   ],
@@ -5854,6 +6223,7 @@ class EditableInfoScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final addTitle = appLanguage.isHindi ? '${tt(title)} जोड़ें' : 'Add $title';
     return Scaffold(
       body: AppPage(
         child: ListView(
@@ -5862,7 +6232,7 @@ class EditableInfoScreen extends StatelessWidget {
             TopBar(title: title),
             const SizedBox(height: 18),
             EditableEntryPanel(
-              title: 'Add $title',
+              title: addTitle,
               titleHint: 'Title',
               subtitleHint: seedSubtitle ?? 'Details',
               buttonLabel: 'Save',
@@ -5989,8 +6359,11 @@ class _EditableEntryPanelState extends State<EditableEntryPanel> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  widget.title,
-                  style: const TextStyle(fontWeight: FontWeight.w900),
+                  tt(widget.title),
+                  style: TextStyle(
+                    color: palette.text,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
             ],
@@ -5999,7 +6372,7 @@ class _EditableEntryPanelState extends State<EditableEntryPanel> {
           TextField(
             controller: _titleController,
             decoration: InputDecoration(
-              hintText: widget.titleHint,
+              hintText: tt(widget.titleHint),
               filled: true,
               fillColor: palette.soft,
               border: OutlineInputBorder(
@@ -6014,7 +6387,7 @@ class _EditableEntryPanelState extends State<EditableEntryPanel> {
             minLines: 2,
             maxLines: 4,
             decoration: InputDecoration(
-              hintText: widget.subtitleHint,
+              hintText: tt(widget.subtitleHint),
               filled: true,
               fillColor: palette.soft,
               border: OutlineInputBorder(
@@ -6032,12 +6405,12 @@ class _EditableEntryPanelState extends State<EditableEntryPanel> {
                 OutlinedButton.icon(
                   onPressed: _busy ? null : () => _pickAttachment(false),
                   icon: const Icon(Icons.upload_file_rounded),
-                  label: const Text('Upload File'),
+                  label: Text(tt('Upload File')),
                 ),
                 OutlinedButton.icon(
                   onPressed: _busy ? null : () => _pickAttachment(true),
                   icon: const Icon(Icons.image_rounded),
-                  label: const Text('Upload Image'),
+                  label: Text(tt('Upload Image')),
                 ),
               ],
             ),
@@ -6186,6 +6559,7 @@ class InfoEntryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return AppCard(
       margin: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -6201,12 +6575,15 @@ class InfoEntryCard extends StatelessWidget {
               children: [
                 Text(
                   entry.title,
-                  style: const TextStyle(fontWeight: FontWeight.w900),
+                  style: TextStyle(
+                    color: palette.text,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   entry.subtitle,
-                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                  style: TextStyle(color: palette.muted, fontSize: 12),
                 ),
                 if (entry.attachmentName.isNotEmpty) ...[
                   const SizedBox(height: 6),
@@ -6272,20 +6649,22 @@ Future<void> confirmDeleteEntry(
       final palette = AppThemePalette.current;
       return AlertDialog(
         backgroundColor: palette.card,
-        title: Text('Delete entry?', style: TextStyle(color: palette.text)),
+        title: Text(tt('Delete entry?'), style: TextStyle(color: palette.text)),
         content: Text(
-          'This saved item and its uploaded attachment will be removed from this device.',
+          tt(
+            'This saved item and its uploaded attachment will be removed from this device.',
+          ),
           style: TextStyle(color: palette.muted),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(tt('Cancel')),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppColors.red),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
+            child: Text(tt('Delete')),
           ),
         ],
       );
@@ -6296,7 +6675,7 @@ Future<void> confirmDeleteEntry(
     if (context.mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Deleted.')));
+      ).showSnackBar(SnackBar(content: Text(tt('Deleted.'))));
     }
   }
 }
@@ -6551,6 +6930,7 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return Scaffold(
       body: AppPage(
         child: ListView(
@@ -6591,9 +6971,9 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
                         margin: const EdgeInsets.only(bottom: 12),
                         child: Row(
                           children: [
-                            const CircleAvatar(
-                              backgroundColor: AppColors.soft,
-                              child: Icon(
+                            CircleAvatar(
+                              backgroundColor: palette.soft,
+                              child: const Icon(
                                 Icons.contact_phone_rounded,
                                 color: AppColors.navy,
                               ),
@@ -6605,15 +6985,16 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
                                 children: [
                                   Text(
                                     contact.name,
-                                    style: const TextStyle(
+                                    style: TextStyle(
+                                      color: palette.text,
                                       fontWeight: FontWeight.w900,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     '${contact.relation} - ${contact.phone}',
-                                    style: const TextStyle(
-                                      color: AppColors.muted,
+                                    style: TextStyle(
+                                      color: palette.muted,
                                       fontSize: 12,
                                     ),
                                   ),
@@ -6647,9 +7028,10 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
+      style: TextStyle(color: palette.text),
       decoration: InputDecoration(
         prefixIcon: Icon(icon, color: AppColors.navy),
-        hintText: hint,
+        hintText: tt(hint),
         filled: true,
         fillColor: palette.soft,
         border: OutlineInputBorder(
@@ -6666,7 +7048,7 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
     final relation = _relationController.text.trim();
     if (name.isEmpty || phone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Name and phone are required.')),
+        SnackBar(content: Text(tt('Name and phone are required.'))),
       );
       return;
     }
@@ -6779,9 +7161,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
+      style: TextStyle(color: palette.text),
       decoration: InputDecoration(
         prefixIcon: Icon(icon, color: AppColors.navy),
-        hintText: hint,
+        hintText: tt(hint),
         filled: true,
         fillColor: palette.soft,
         border: OutlineInputBorder(
@@ -6798,7 +7181,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final contact = _contactController.text.trim();
     if (name.length < 2 || !email.contains('@')) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a valid name and email.')),
+        SnackBar(content: Text(tt('Enter a valid name and email.'))),
       );
       return;
     }
@@ -6850,8 +7233,9 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
                 children: [
                   TextField(
                     controller: _nameController,
+                    style: TextStyle(color: palette.text),
                     decoration: InputDecoration(
-                      hintText: 'Doctor, hospital, or contact name',
+                      hintText: tt('Doctor, hospital, or contact name'),
                       filled: true,
                       fillColor: palette.soft,
                       border: OutlineInputBorder(
@@ -6865,8 +7249,9 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
                     controller: _messageController,
                     minLines: 3,
                     maxLines: 5,
+                    style: TextStyle(color: palette.text),
                     decoration: InputDecoration(
-                      hintText: 'Message',
+                      hintText: tt('Message'),
                       filled: true,
                       fillColor: palette.soft,
                       border: OutlineInputBorder(
@@ -6891,11 +7276,15 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
     final body = _messageController.text.trim();
     if (name.isEmpty || body.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Name and message are required.')),
+        SnackBar(content: Text(tt('Name and message are required.'))),
       );
       return;
     }
-    appData.createThread(name: name, subtitle: 'Custom message', body: body);
+    appData.createThread(
+      name: name,
+      subtitle: tt('Custom message'),
+      body: body,
+    );
     Navigator.pop(context);
   }
 }
@@ -6921,6 +7310,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
   @override
   Widget build(BuildContext context) {
     final thread = appData.threads[widget.threadIndex];
+    final palette = AppThemePalette.current;
     return Scaffold(
       body: AppPage(
         child: Column(
@@ -6948,9 +7338,9 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                             decoration: BoxDecoration(
                               color: message.fromUser
                                   ? AppColors.navy
-                                  : Colors.white,
+                                  : palette.card,
                               borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: AppColors.line),
+                              border: Border.all(color: palette.line),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -6960,7 +7350,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                                   style: TextStyle(
                                     color: message.fromUser
                                         ? Colors.white
-                                        : AppColors.text,
+                                        : palette.text,
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
@@ -6970,7 +7360,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                                   style: TextStyle(
                                     color: message.fromUser
                                         ? Colors.white70
-                                        : AppColors.muted,
+                                        : palette.muted,
                                     fontSize: 10,
                                   ),
                                 ),
@@ -6990,13 +7380,14 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                   Expanded(
                     child: TextField(
                       controller: _controller,
+                      style: TextStyle(color: palette.text),
                       decoration: InputDecoration(
-                        hintText: 'Type a message...',
+                        hintText: tt('Type a message...'),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: palette.card,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(999),
-                          borderSide: const BorderSide(color: AppColors.line),
+                          borderSide: BorderSide(color: palette.line),
                         ),
                       ),
                     ),
@@ -7273,7 +7664,7 @@ class ThemeModeButton extends StatelessWidget {
       builder: (context, _) {
         final palette = AppThemePalette.current;
         return PopupMenuButton<AppVisualTheme>(
-          tooltip: 'Change theme',
+          tooltip: tt('Change theme'),
           initialValue: appTheme.mode,
           onSelected: (mode) => unawaited(appTheme.setMode(mode)),
           color: palette.card,
@@ -7296,7 +7687,7 @@ class ThemeModeButton extends StatelessWidget {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        mode.label,
+                        tt(mode.label),
                         style: TextStyle(
                           color: palette.text,
                           fontWeight: mode == appTheme.mode
@@ -7435,7 +7826,9 @@ class TopBar extends StatelessWidget {
           const SizedBox(width: 40),
         Expanded(
           child: Text(
-            title,
+            title.startsWith('Search: ')
+                ? '${tt('Search')}: ${title.substring(8)}'
+                : tt(title),
             textAlign: TextAlign.center,
             style: TextStyle(
               color: AppThemePalette.current.text,
@@ -7533,9 +7926,10 @@ class _SearchBoxState extends State<SearchBox> {
                 widget.onChanged?.call(value.trim());
                 widget.onSubmitted?.call(value.trim());
               },
+              style: TextStyle(color: palette.text),
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
-                hintText: widget.hint,
+                hintText: tt(widget.hint),
                 border: InputBorder.none,
                 isDense: true,
                 hintStyle: TextStyle(color: palette.muted, fontSize: 13),
@@ -7586,6 +7980,7 @@ class _DoctorAvailabilityTickerState extends State<DoctorAvailabilityTicker> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     final visibleDoctors = liveHealthData.nearbyDoctors(appLocation.current);
     if (liveHealthData.loading && visibleDoctors.isEmpty) {
       return const LiveHealthLoadingCard(
@@ -7614,10 +8009,10 @@ class _DoctorAvailabilityTickerState extends State<DoctorAvailabilityTicker> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Next doctor available',
+                  Text(
+                    tt('Next doctor available'),
                     style: TextStyle(
-                      color: AppColors.muted,
+                      color: palette.muted,
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                     ),
@@ -7627,7 +8022,10 @@ class _DoctorAvailabilityTickerState extends State<DoctorAvailabilityTicker> {
                     doctor.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w900),
+                    style: TextStyle(
+                      color: palette.text,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -7948,14 +8346,16 @@ class ServiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: item.onTap,
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppColors.soft,
+          color: palette.soft,
           borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: palette.line),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -7963,15 +8363,19 @@ class ServiceCard extends StatelessWidget {
             Icon(item.icon, color: item.color, size: 28),
             const Spacer(),
             Text(
-              item.title,
+              tt(item.title),
               maxLines: 2,
-              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+              style: TextStyle(
+                color: palette.text,
+                fontWeight: FontWeight.w900,
+                fontSize: 13,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
-              item.subtitle,
+              tt(item.subtitle),
               maxLines: 2,
-              style: const TextStyle(color: AppColors.muted, fontSize: 11),
+              style: TextStyle(color: palette.muted, fontSize: 11),
             ),
           ],
         ),
@@ -7994,18 +8398,23 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return Row(
       children: [
         Expanded(
           child: Text(
-            title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+            tt(title),
+            style: TextStyle(
+              color: palette.text,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ),
         if (action != null)
           TextButton(
             onPressed: onTap,
-            child: Text(action!, style: const TextStyle(fontSize: 12)),
+            child: Text(tt(action!), style: const TextStyle(fontSize: 12)),
           ),
       ],
     );
@@ -8026,6 +8435,7 @@ class CategoryChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
@@ -8043,15 +8453,20 @@ class CategoryChips extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: labels[i] == selectedLabel
                       ? AppColors.navy
-                      : AppColors.soft,
+                      : palette.soft,
                   borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: labels[i] == selectedLabel
+                        ? AppColors.navy
+                        : palette.line,
+                  ),
                 ),
                 child: Text(
-                  labels[i],
+                  tt(labels[i]),
                   style: TextStyle(
                     color: labels[i] == selectedLabel
                         ? Colors.white
-                        : AppColors.text,
+                        : palette.text,
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
                   ),
@@ -8072,6 +8487,7 @@ class DoctorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return AppCard(
       onTap: onTap,
       margin: const EdgeInsets.only(bottom: 14),
@@ -8114,8 +8530,8 @@ class DoctorCard extends StatelessWidget {
                 const SizedBox(height: 5),
                 Text(
                   doctor.specialty,
-                  style: const TextStyle(
-                    color: AppColors.text,
+                  style: TextStyle(
+                    color: palette.text,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
@@ -8123,7 +8539,7 @@ class DoctorCard extends StatelessWidget {
                 const SizedBox(height: 7),
                 Text(
                   '${doctor.experience}  -  ${doctor.degree}',
-                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                  style: TextStyle(color: palette.muted, fontSize: 12),
                 ),
                 const SizedBox(height: 11),
                 Row(
@@ -8370,8 +8786,8 @@ class RatingLine extends StatelessWidget {
             '$rating ($reviews)',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.text,
+            style: TextStyle(
+              color: AppThemePalette.current.text,
               fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
@@ -8390,30 +8806,36 @@ class StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return Container(
       constraints: const BoxConstraints(minHeight: 72),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: AppColors.soft,
+        color: palette.soft,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: palette.line),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            title,
+            tt(title),
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
+            style: TextStyle(
+              color: palette.text,
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
-            subtitle,
+            tt(subtitle),
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: AppColors.muted, fontSize: 10),
+            style: TextStyle(color: palette.muted, fontSize: 10),
           ),
         ],
       ),
@@ -8468,6 +8890,7 @@ class DateSlots extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     final dates = appointmentDateOptions();
     return Row(
       children: [
@@ -8480,7 +8903,10 @@ class DateSlots extends StatelessWidget {
                 margin: EdgeInsets.only(right: i == dates.length - 1 ? 0 : 8),
                 padding: const EdgeInsets.symmetric(vertical: 11),
                 decoration: BoxDecoration(
-                  color: i == selectedIndex ? AppColors.navy : AppColors.soft,
+                  color: i == selectedIndex ? AppColors.navy : palette.soft,
+                  border: Border.all(
+                    color: i == selectedIndex ? AppColors.navy : palette.line,
+                  ),
                   borderRadius: BorderRadius.circular(11),
                 ),
                 child: Column(
@@ -8488,9 +8914,7 @@ class DateSlots extends StatelessWidget {
                     Text(
                       dates[i].$1,
                       style: TextStyle(
-                        color: i == selectedIndex
-                            ? Colors.white
-                            : AppColors.text,
+                        color: i == selectedIndex ? Colors.white : palette.text,
                         fontSize: 12,
                         fontWeight: FontWeight.w900,
                       ),
@@ -8501,7 +8925,7 @@ class DateSlots extends StatelessWidget {
                       style: TextStyle(
                         color: i == selectedIndex
                             ? Colors.white70
-                            : AppColors.muted,
+                            : palette.muted,
                         fontSize: 10,
                       ),
                     ),
@@ -8527,6 +8951,7 @@ class TimeSlots extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -8545,13 +8970,16 @@ class TimeSlots extends StatelessWidget {
           child: Container(
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: selected ? AppColors.navy : AppColors.soft,
+              color: selected ? AppColors.navy : palette.soft,
+              border: Border.all(
+                color: selected ? AppColors.navy : palette.line,
+              ),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
               appointmentTimes[index],
               style: TextStyle(
-                color: selected ? Colors.white : AppColors.text,
+                color: selected ? Colors.white : palette.text,
                 fontSize: 12,
                 fontWeight: FontWeight.w900,
               ),
@@ -8931,6 +9359,7 @@ class MapLocationToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     final title = switch (mode) {
       MapMode.route => 'Live emergency route',
       MapMode.hospitals => 'Hospitals near you',
@@ -8938,7 +9367,7 @@ class MapLocationToolbar extends StatelessWidget {
     };
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: .92),
+        color: palette.card.withValues(alpha: .94),
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
@@ -8956,10 +9385,11 @@ class MapLocationToolbar extends StatelessWidget {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                title,
+                tt(title),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
+                  color: palette.text,
                   fontSize: 12,
                   fontWeight: FontWeight.w900,
                 ),
@@ -8970,7 +9400,7 @@ class MapLocationToolbar extends StatelessWidget {
                   ? null
                   : appLocation.requestCurrentLocation,
               icon: const Icon(Icons.gps_fixed_rounded, size: 16),
-              label: const Text('GPS'),
+              label: Text(tt('GPS')),
             ),
           ],
         ),
@@ -8993,6 +9423,7 @@ class MapBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -9016,15 +9447,16 @@ class MapBubble extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: palette.card,
             borderRadius: BorderRadius.circular(9),
+            border: Border.all(color: palette.line),
           ),
           child: Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.text,
+            style: TextStyle(
+              color: palette.text,
               fontSize: 9,
               fontWeight: FontWeight.w900,
             ),
@@ -9057,6 +9489,7 @@ class _EmergencyRideCardState extends State<EmergencyRideCard> {
     return AnimatedBuilder(
       animation: Listenable.merge([appLocation, liveHealthData]),
       builder: (context, _) {
+        final palette = AppThemePalette.current;
         final nearest = liveHealthData.nearbyHospitals(appLocation.current);
         if (liveHealthData.loading && nearest.isEmpty) {
           return const LiveHealthLoadingCard(
@@ -9077,9 +9510,13 @@ class _EmergencyRideCardState extends State<EmergencyRideCard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Confirm Emergency Ride',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+              Text(
+                tt('Confirm Emergency Ride'),
+                style: TextStyle(
+                  color: palette.text,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
               const SizedBox(height: 18),
               RouteRow(
@@ -9139,10 +9576,10 @@ class _EmergencyRideCardState extends State<EmergencyRideCard> {
                 onTap: _requesting ? null : () => _requestCab(context),
               ),
               const SizedBox(height: 12),
-              const Center(
+              Center(
                 child: Text(
-                  'Drivers will be notified about the emergency',
-                  style: TextStyle(color: AppColors.muted, fontSize: 12),
+                  tt('Drivers will be notified about the emergency'),
+                  style: TextStyle(color: palette.muted, fontSize: 12),
                 ),
               ),
               AnimatedBuilder(
@@ -9271,7 +9708,9 @@ class _EmergencyRideCardState extends State<EmergencyRideCard> {
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
+      backgroundColor: AppThemePalette.current.card,
       builder: (context) {
+        final palette = AppThemePalette.current;
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 6, 20, 22),
@@ -9280,8 +9719,9 @@ class _EmergencyRideCardState extends State<EmergencyRideCard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
-                  style: const TextStyle(
+                  tt(title),
+                  style: TextStyle(
+                    color: palette.text,
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
                   ),
@@ -9293,19 +9733,22 @@ class _EmergencyRideCardState extends State<EmergencyRideCard> {
                     leading: CircleAvatar(
                       backgroundColor: value == currentValue
                           ? AppColors.navy
-                          : AppColors.soft,
+                          : palette.soft,
                       child: Icon(
                         value == currentValue
                             ? Icons.check_rounded
                             : Icons.circle_outlined,
                         color: value == currentValue
                             ? Colors.white
-                            : AppColors.muted,
+                            : palette.muted,
                       ),
                     ),
                     title: Text(
-                      value,
-                      style: const TextStyle(fontWeight: FontWeight.w900),
+                      tt(value),
+                      style: TextStyle(
+                        color: palette.text,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                     onTap: () {
                       onSelected(value);
@@ -9328,12 +9771,13 @@ class CabRequestStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.soft,
+        color: palette.soft,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.line),
+        border: Border.all(color: palette.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -9356,17 +9800,17 @@ class CabRequestStatusCard extends StatelessWidget {
                   children: [
                     Text(
                       '${request.status} - ETA ${request.etaMinutes} min',
-                      style: const TextStyle(fontWeight: FontWeight.w900),
+                      style: TextStyle(
+                        color: palette.text,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       '${request.driverName} - ${request.createdAtLabel}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.muted,
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: palette.muted, fontSize: 12),
                     ),
                   ],
                 ),
@@ -9374,7 +9818,7 @@ class CabRequestStatusCard extends StatelessWidget {
               TextButton.icon(
                 onPressed: () => callPhone(context, request.hospitalPhone),
                 icon: const Icon(Icons.call_rounded, size: 17),
-                label: const Text('Call'),
+                label: Text(tt('Call')),
               ),
             ],
           ),
@@ -9409,8 +9853,8 @@ class CabRequestStatusCard extends StatelessWidget {
             request.dropLocation,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.text,
+            style: TextStyle(
+              color: palette.text,
               fontSize: 12,
               fontWeight: FontWeight.w800,
             ),
@@ -9420,7 +9864,7 @@ class CabRequestStatusCard extends StatelessWidget {
             'Pickup: ${request.pickup}',
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: AppColors.muted, fontSize: 12),
+            style: TextStyle(color: palette.muted, fontSize: 12),
           ),
         ],
       ),
@@ -9436,12 +9880,13 @@ class _CabMetaChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: palette.card,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.line),
+        border: Border.all(color: palette.line),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -9449,8 +9894,12 @@ class _CabMetaChip extends StatelessWidget {
           Icon(icon, size: 14, color: AppColors.navy),
           const SizedBox(width: 5),
           Text(
-            label,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
+            tt(label),
+            style: TextStyle(
+              color: palette.text,
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ],
       ),
@@ -9479,6 +9928,7 @@ class RouteRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
       child: Row(
@@ -9490,13 +9940,16 @@ class RouteRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
-                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                  tt(title),
+                  style: TextStyle(color: palette.muted, fontSize: 12),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
+                  style: TextStyle(
+                    color: palette.text,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ],
             ),
@@ -9523,15 +9976,16 @@ class RideInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AppColors.soft,
+          color: palette.soft,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.line),
+          border: Border.all(color: palette.line),
         ),
         child: Row(
           children: [
@@ -9542,15 +9996,13 @@ class RideInfo extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    title,
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      fontSize: 10,
-                    ),
+                    tt(title),
+                    style: TextStyle(color: palette.muted, fontSize: 10),
                   ),
                   Text(
-                    value,
-                    style: const TextStyle(
+                    tt(value),
+                    style: TextStyle(
+                      color: palette.text,
                       fontWeight: FontWeight.w900,
                       fontSize: 12,
                     ),
@@ -9558,11 +10010,7 @@ class RideInfo extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: AppColors.muted,
-              size: 18,
-            ),
+            Icon(Icons.chevron_right_rounded, color: palette.muted, size: 18),
           ],
         ),
       ),
@@ -9585,6 +10033,7 @@ class HospitalMiniCard extends StatelessWidget {
     return AnimatedBuilder(
       animation: appLocation,
       builder: (context, _) {
+        final palette = AppThemePalette.current;
         final distance = hospital.distanceFrom(appLocation.current);
         return AppCard(
           padding: const EdgeInsets.all(14),
@@ -9607,7 +10056,7 @@ class HospitalMiniCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.soft,
+                  color: palette.soft,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
@@ -9622,7 +10071,10 @@ class HospitalMiniCard extends StatelessWidget {
                   children: [
                     Text(
                       hospital.name,
-                      style: const TextStyle(fontWeight: FontWeight.w900),
+                      style: TextStyle(
+                        color: palette.text,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text.rich(
@@ -9630,7 +10082,7 @@ class HospitalMiniCard extends StatelessWidget {
                         children: [
                           TextSpan(
                             text: distance,
-                            style: const TextStyle(color: AppColors.muted),
+                            style: TextStyle(color: palette.muted),
                           ),
                           const TextSpan(text: '  -  '),
                           TextSpan(
@@ -9679,6 +10131,7 @@ class PlaceDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return Scaffold(
       body: AppPage(
         child: ListView(
@@ -9699,7 +10152,8 @@ class PlaceDetailScreen extends StatelessWidget {
                   const SizedBox(height: 14),
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
+                      color: palette.text,
                       fontSize: 21,
                       fontWeight: FontWeight.w900,
                     ),
@@ -9707,8 +10161,8 @@ class PlaceDetailScreen extends StatelessWidget {
                   const SizedBox(height: 6),
                   Text(
                     subtitle,
-                    style: const TextStyle(
-                      color: AppColors.muted,
+                    style: TextStyle(
+                      color: palette.muted,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -9726,7 +10180,7 @@ class PlaceDetailScreen extends StatelessWidget {
                         child: OutlinedButton.icon(
                           onPressed: () => openDirections(context, location),
                           icon: const Icon(Icons.directions_rounded),
-                          label: const Text('Directions'),
+                          label: Text(tt('Directions')),
                         ),
                       ),
                     ],
@@ -9838,11 +10292,13 @@ class AyushmanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.soft,
+        color: palette.soft,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: palette.line),
       ),
       child: Row(
         children: [
@@ -9850,15 +10306,19 @@ class AyushmanCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Ayushman Bharat',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                Text(
+                  tt('Ayushman Bharat'),
+                  style: TextStyle(
+                    color: palette.text,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   scheme.subtitle,
                   style: TextStyle(
-                    color: AppColors.text,
+                    color: palette.text,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
@@ -9867,7 +10327,7 @@ class AyushmanCard extends StatelessWidget {
                 Text(
                   scheme.benefit,
                   style: TextStyle(
-                    color: AppColors.muted,
+                    color: palette.muted,
                     fontSize: 12,
                     height: 1.35,
                   ),
@@ -9889,9 +10349,9 @@ class AyushmanCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    child: const Text(
-                      'Check Eligibility',
-                      style: TextStyle(
+                    child: Text(
+                      tt('Check Eligibility'),
+                      style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
                       ),
@@ -9950,6 +10410,7 @@ class SchemeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return AppCard(
       onTap: () => Navigator.push(
         context,
@@ -9970,18 +10431,21 @@ class SchemeTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  scheme.title,
-                  style: const TextStyle(fontWeight: FontWeight.w900),
+                  tt(scheme.title),
+                  style: TextStyle(
+                    color: palette.text,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  scheme.subtitle,
-                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                  tt(scheme.subtitle),
+                  style: TextStyle(color: palette.muted, fontSize: 12),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+          Icon(Icons.chevron_right_rounded, color: palette.muted),
         ],
       ),
     );
@@ -9995,12 +10459,13 @@ class SchemeDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return Scaffold(
       body: AppPage(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
           children: [
-            TopBar(title: scheme.title),
+            TopBar(title: tt(scheme.title)),
             const SizedBox(height: 18),
             AppCard(
               padding: const EdgeInsets.all(18),
@@ -10014,15 +10479,16 @@ class SchemeDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    scheme.title,
-                    style: const TextStyle(
+                    tt(scheme.title),
+                    style: TextStyle(
+                      color: palette.text,
                       fontSize: 20,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    scheme.department,
+                    tt(scheme.department),
                     style: const TextStyle(
                       color: AppColors.navy,
                       fontWeight: FontWeight.w800,
@@ -10030,29 +10496,29 @@ class SchemeDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    scheme.benefit,
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      height: 1.45,
-                    ),
+                    tt(scheme.benefit),
+                    style: TextStyle(color: palette.muted, height: 1.45),
                   ),
                   const SizedBox(height: 14),
-                  const Text(
-                    'Eligibility',
-                    style: TextStyle(fontWeight: FontWeight.w900),
+                  Text(
+                    tt('Eligibility'),
+                    style: TextStyle(
+                      color: palette.text,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    scheme.eligibility,
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      height: 1.45,
-                    ),
+                    tt(scheme.eligibility),
+                    style: TextStyle(color: palette.muted, height: 1.45),
                   ),
                   const SizedBox(height: 14),
-                  const Text(
-                    'Documents',
-                    style: TextStyle(fontWeight: FontWeight.w900),
+                  Text(
+                    tt('Documents'),
+                    style: TextStyle(
+                      color: palette.text,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   for (final document in scheme.documents)
@@ -10068,9 +10534,9 @@ class SchemeDetailScreen extends StatelessWidget {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              document,
-                              style: const TextStyle(
-                                color: AppColors.text,
+                              tt(document),
+                              style: TextStyle(
+                                color: palette.text,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -10103,6 +10569,7 @@ class KendraCard extends StatelessWidget {
     return AnimatedBuilder(
       animation: appLocation,
       builder: (context, _) {
+        final palette = AppThemePalette.current;
         final distance = place.distanceFrom(appLocation.current);
         return AppCard(
           padding: const EdgeInsets.all(14),
@@ -10125,7 +10592,7 @@ class KendraCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEAF8EF),
+                  color: AppColors.green.withValues(alpha: .12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
@@ -10145,10 +10612,7 @@ class KendraCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       '$distance  -  ${place.area}',
-                      style: const TextStyle(
-                        color: AppColors.muted,
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: palette.muted, fontSize: 12),
                     ),
                   ],
                 ),
@@ -10172,14 +10636,18 @@ class AppointmentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return AppCard(
       margin: const EdgeInsets.only(bottom: 14),
       child: Row(
         children: [
-          const CircleAvatar(
+          CircleAvatar(
             radius: 32,
-            backgroundColor: AppColors.soft,
-            child: Icon(Icons.event_available_rounded, color: AppColors.navy),
+            backgroundColor: palette.soft,
+            child: const Icon(
+              Icons.event_available_rounded,
+              color: AppColors.navy,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -10193,7 +10661,7 @@ class AppointmentCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   appointment.specialty,
-                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                  style: TextStyle(color: palette.muted, fontSize: 12),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -10208,10 +10676,7 @@ class AppointmentCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     appointment.reason,
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: palette.muted, fontSize: 12),
                   ),
                 ],
               ],
@@ -10238,14 +10703,15 @@ class MessageTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return AppCard(
       onTap: onTap,
       margin: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          const CircleAvatar(
-            backgroundColor: AppColors.soft,
-            child: Icon(
+          CircleAvatar(
+            backgroundColor: palette.soft,
+            child: const Icon(
               Icons.chat_bubble_outline_rounded,
               color: AppColors.navy,
             ),
@@ -10259,7 +10725,7 @@ class MessageTile extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   text,
-                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                  style: TextStyle(color: palette.muted, fontSize: 12),
                 ),
               ],
             ),
@@ -10278,6 +10744,7 @@ class ProfileHeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return AppCard(
       onTap: onTap,
       padding: const EdgeInsets.all(16),
@@ -10310,12 +10777,12 @@ class ProfileHeaderCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   profile.phone,
-                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                  style: TextStyle(color: palette.muted, fontSize: 12),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.chevron_right_rounded, color: AppColors.text),
+          Icon(Icons.chevron_right_rounded, color: palette.text),
         ],
       ),
     );
@@ -10353,7 +10820,7 @@ class ProfileMenuItem extends StatelessWidget {
             const SizedBox(width: 13),
             Expanded(
               child: Text(
-                title,
+                tt(title),
                 style: TextStyle(
                   color: danger ? AppColors.red : palette.text,
                   fontWeight: FontWeight.w700,
@@ -10497,7 +10964,7 @@ class NavItem extends StatelessWidget {
             Icon(icon, color: color, size: 22),
             const SizedBox(height: 4),
             Text(
-              label,
+              tt(label),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -10531,7 +10998,10 @@ class PrimaryButton extends StatelessWidget {
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
         ),
-        child: Text(label, style: const TextStyle(fontWeight: FontWeight.w900)),
+        child: Text(
+          tt(label),
+          style: const TextStyle(fontWeight: FontWeight.w900),
+        ),
       ),
     );
   }
