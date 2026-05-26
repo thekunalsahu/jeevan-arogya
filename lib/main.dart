@@ -621,41 +621,17 @@ class AppThemePalette {
   final Color line;
   final Color shadow;
 
-  static AppThemePalette get current => switch (appTheme.mode) {
-    AppVisualTheme.light => const AppThemePalette(
-      pageTop: Colors.white,
-      pageBottom: AppColors.bg,
-      shell: Color(0xFFEFF4FA),
-      card: Colors.white,
-      soft: AppColors.soft,
-      text: AppColors.text,
-      muted: AppColors.muted,
-      line: AppColors.line,
-      shadow: Colors.black,
-    ),
-    AppVisualTheme.dark => const AppThemePalette(
-      pageTop: Color(0xFF111827),
-      pageBottom: Color(0xFF07111F),
-      shell: Color(0xFF020617),
-      card: Color(0xFF111827),
-      soft: Color(0xFF1F2937),
-      text: Color(0xFFEAF1F8),
-      muted: Color(0xFFA8B3C2),
-      line: Color(0xFF273244),
-      shadow: Colors.black,
-    ),
-    AppVisualTheme.black => const AppThemePalette(
-      pageTop: Colors.black,
-      pageBottom: Colors.black,
-      shell: Colors.black,
-      card: Color(0xFF050505),
-      soft: Color(0xFF101010),
-      text: Colors.white,
-      muted: Color(0xFFB9C2CE),
-      line: Color(0xFF1B1B1B),
-      shadow: Colors.black,
-    ),
-  };
+  static AppThemePalette get current => const AppThemePalette(
+    pageTop: Colors.white,
+    pageBottom: AppColors.bg,
+    shell: Color(0xFFEFF4FA),
+    card: Colors.white,
+    soft: AppColors.soft,
+    text: AppColors.text,
+    muted: AppColors.muted,
+    line: AppColors.line,
+    shadow: Colors.black,
+  );
 }
 
 enum AppLanguage { english, hindi }
@@ -701,19 +677,15 @@ extension AppLanguageLabel on AppLanguage {
 }
 
 String tr(String key) {
-  final table = appLanguage.isHindi ? _hiText : _enText;
-  return table[key] ?? _enText[key] ?? key;
+  return _enText[key] ?? key;
 }
 
 String trHello(String firstName) {
-  return appLanguage.isHindi ? 'नमस्ते, $firstName' : 'Hello, $firstName';
+  return 'Hello, $firstName';
 }
 
 String tt(String text) {
-  if (!appLanguage.isHindi) {
-    return text;
-  }
-  return _exactHiText[text] ?? text;
+  return text;
 }
 
 const _enText = {
@@ -752,7 +724,7 @@ const _enText = {
       'Tell me your health concern. I can read uploaded report images/text and use your nearby doctors, hospitals and medical stores.',
 };
 
-const _hiText = {
+const hiText = {
   'helpToday': 'आज आपकी कैसे\nमदद करें?',
   'searchHome': 'डॉक्टर, अस्पताल, सेवाएं खोजें...',
   'findDoctors': 'डॉक्टर खोजें',
@@ -787,7 +759,7 @@ const _hiText = {
       'अपनी स्वास्थ्य समस्या बताएं। मैं रिपोर्ट इमेज/टेक्स्ट पढ़कर पास के डॉक्टर, अस्पताल और मेडिकल स्टोर के हिसाब से मदद करूंगा।',
 };
 
-const _exactHiText = {
+const exactHiText = {
   'Home': 'होम',
   'Appointments': 'अपॉइंटमेंट',
   'Messages': 'मैसेज',
@@ -1013,8 +985,6 @@ const _exactHiText = {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SupabaseConfig.initialize();
-  await appTheme.load();
-  await appLanguage.load();
   await appData.load();
   runApp(const JeevanArogyaApp());
 }
@@ -1024,67 +994,62 @@ class JeevanArogyaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: Listenable.merge([appTheme, appLanguage]),
-      builder: (context, _) {
-        final palette = AppThemePalette.current;
-        return MaterialApp(
-          debugShowCheckedModeBanner: false,
-          title: 'Jeevan Arogya',
-          theme: ThemeData(
-            useMaterial3: true,
-            brightness: appTheme.brightness,
-            scaffoldBackgroundColor: palette.pageBottom,
-            fontFamily: 'Roboto',
-            textTheme:
-                ThemeData(brightness: appTheme.brightness, fontFamily: 'Roboto')
-                    .textTheme
-                    .apply(bodyColor: palette.text, displayColor: palette.text),
-            inputDecorationTheme: InputDecorationTheme(
-              filled: true,
-              fillColor: palette.soft,
-              hintStyle: TextStyle(color: palette.muted),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-            ),
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: AppColors.navy,
-              brightness: appTheme.brightness,
-              primary: AppColors.navy,
-              surface: palette.card,
+    final palette = AppThemePalette.current;
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Jeevan Arogya',
+      theme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: palette.pageBottom,
+        fontFamily: 'Roboto',
+        textTheme: ThemeData(
+          brightness: Brightness.light,
+          fontFamily: 'Roboto',
+        ).textTheme.apply(bodyColor: palette.text, displayColor: palette.text),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: palette.soft,
+          hintStyle: TextStyle(color: palette.muted),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+        ),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: AppColors.navy,
+          brightness: Brightness.light,
+          primary: AppColors.navy,
+          surface: palette.card,
+        ),
+      ),
+      builder: (context, child) => ColoredBox(
+        color: palette.shell,
+        child: DefaultTextStyle.merge(
+          style: TextStyle(color: palette.text),
+          child: IconTheme.merge(
+            data: IconThemeData(color: palette.text),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth >= 800) {
+                  return child ?? const SizedBox.shrink();
+                }
+                final width = constraints.maxWidth < 430
+                    ? constraints.maxWidth
+                    : 430.0;
+                return Center(
+                  child: SizedBox(
+                    width: width,
+                    height: constraints.maxHeight,
+                    child: child ?? const SizedBox.shrink(),
+                  ),
+                );
+              },
             ),
           ),
-          builder: (context, child) => ColoredBox(
-            color: palette.shell,
-            child: DefaultTextStyle.merge(
-              style: TextStyle(color: palette.text),
-              child: IconTheme.merge(
-                data: IconThemeData(color: palette.text),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    if (constraints.maxWidth >= 800) {
-                      return child ?? const SizedBox.shrink();
-                    }
-                    final width = constraints.maxWidth < 430
-                        ? constraints.maxWidth
-                        : 430.0;
-                    return Center(
-                      child: SizedBox(
-                        width: width,
-                        height: constraints.maxHeight,
-                        child: child ?? const SizedBox.shrink(),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-          home: const AuthGate(),
-        );
-      },
+        ),
+      ),
+      home: const AuthGate(),
     );
   }
 }
@@ -1103,189 +1068,6 @@ class AppColors {
   static const line = Color(0xFFE8EDF4);
   static const soft = Color(0xFFF0F4F9);
 }
-
-const doctors = [
-  Doctor(
-    name: 'Dr. Ananya Sharma',
-    specialty: 'Cardiologist',
-    experience: '10+ Years Exp.',
-    degree: 'MBBS, MD',
-    fee: 'Rs. 800',
-    rating: '4.8',
-    reviews: '128',
-    nextSlot: 'Today, 11:30 AM',
-    color: Color(0xFFE9F0F8),
-  ),
-  Doctor(
-    name: 'Dr. Rohit Verma',
-    specialty: 'Orthopedic',
-    experience: '8+ Years Exp.',
-    degree: 'MBBS, MS',
-    fee: 'Rs. 600',
-    rating: '4.6',
-    reviews: '96',
-    nextSlot: 'Today, 02:00 PM',
-    color: Color(0xFFE7F4FF),
-  ),
-  Doctor(
-    name: 'Dr. Neha Patel',
-    specialty: 'Pediatrician',
-    experience: '7+ Years Exp.',
-    degree: 'MBBS, DCH',
-    fee: 'Rs. 500',
-    rating: '4.7',
-    reviews: '74',
-    nextSlot: 'Tomorrow, 10:00 AM',
-    color: Color(0xFFFFEFF2),
-  ),
-  Doctor(
-    name: 'Dr. Karan Mehta',
-    specialty: 'Dermatologist',
-    experience: '9+ Years Exp.',
-    degree: 'MBBS, DDV',
-    fee: 'Rs. 700',
-    rating: '4.5',
-    reviews: '68',
-    nextSlot: 'Today, 04:30 PM',
-    color: Color(0xFFFFF1DF),
-  ),
-  Doctor(
-    name: 'Dr. Ritu Sengar',
-    specialty: 'Gynecologist',
-    experience: '12+ Years Exp.',
-    degree: 'MBBS, MS',
-    fee: 'Rs. 750',
-    rating: '4.7',
-    reviews: '112',
-    nextSlot: 'Tomorrow, 09:30 AM',
-    color: Color(0xFFFFEFF8),
-  ),
-  Doctor(
-    name: 'Dr. Sameer Khan',
-    specialty: 'Dentist',
-    experience: '11+ Years Exp.',
-    degree: 'BDS, MDS',
-    fee: 'Rs. 450',
-    rating: '4.6',
-    reviews: '89',
-    nextSlot: 'Today, 05:00 PM',
-    color: Color(0xFFEAFBF3),
-  ),
-  Doctor(
-    name: 'Dr. Meera Joshi',
-    specialty: 'General Physician',
-    experience: '14+ Years Exp.',
-    degree: 'MBBS, MD Medicine',
-    fee: 'Rs. 550',
-    rating: '4.8',
-    reviews: '176',
-    nextSlot: 'Today, 12:30 PM',
-    color: Color(0xFFE9F0F8),
-  ),
-  Doctor(
-    name: 'Dr. Vivek Tiwari',
-    specialty: 'ENT',
-    experience: '9+ Years Exp.',
-    degree: 'MBBS, MS ENT',
-    fee: 'Rs. 600',
-    rating: '4.5',
-    reviews: '72',
-    nextSlot: 'Tomorrow, 03:30 PM',
-    color: Color(0xFFE7F4FF),
-  ),
-  Doctor(
-    name: 'Dr. Priyanka Rao',
-    specialty: 'Neurologist',
-    experience: '13+ Years Exp.',
-    degree: 'MBBS, DM Neurology',
-    fee: 'Rs. 1000',
-    rating: '4.9',
-    reviews: '141',
-    nextSlot: 'Sat, 11:00 AM',
-    color: Color(0xFFF4F0FF),
-  ),
-  Doctor(
-    name: 'Dr. Amit Chouhan',
-    specialty: 'Cardiologist',
-    experience: '16+ Years Exp.',
-    degree: 'MBBS, DM Cardiology',
-    fee: 'Rs. 1200',
-    rating: '4.9',
-    reviews: '204',
-    nextSlot: 'Today, 06:30 PM',
-    color: Color(0xFFEAFBF3),
-  ),
-];
-
-const hospitals = [
-  Hospital(
-    'Apollo Hospitals',
-    '2.4 km away',
-    '24x7 Open',
-    latitude: 22.7533,
-    longitude: 75.8922,
-    phone: '+917314738888',
-  ),
-  Hospital(
-    'Choithram Hospital',
-    '3.1 km away',
-    '24x7 Open',
-    latitude: 22.6893,
-    longitude: 75.8425,
-    phone: '+917312365001',
-  ),
-  Hospital(
-    'Bombay Hospital',
-    '4.2 km away',
-    '24x7 Open',
-    latitude: 22.7564,
-    longitude: 75.9049,
-    phone: '+917314777700',
-  ),
-  Hospital(
-    'Shalby Hospital',
-    '4.8 km away',
-    '24x7 Open',
-    latitude: 22.7679,
-    longitude: 75.8817,
-    phone: '+917314711111',
-  ),
-];
-
-const kendras = [
-  Place(
-    'Jan Aushadhi Kendra',
-    '1.2 km away',
-    'Malviya Nagar',
-    latitude: 22.7448,
-    longitude: 75.8928,
-    phone: '+917310001201',
-  ),
-  Place(
-    'Jan Aushadhi Kendra',
-    '2.7 km away',
-    'Vijay Nagar',
-    latitude: 22.7539,
-    longitude: 75.8953,
-    phone: '+917310001202',
-  ),
-  Place(
-    'Jan Aushadhi Kendra',
-    '3.4 km away',
-    'Bhawarkuan',
-    latitude: 22.6928,
-    longitude: 75.8670,
-    phone: '+917310001203',
-  ),
-  Place(
-    'Jan Aushadhi Kendra',
-    '4.1 km away',
-    'Palasia',
-    latitude: 22.7244,
-    longitude: 75.8839,
-    phone: '+917310001204',
-  ),
-];
 
 class Doctor {
   const Doctor({
@@ -3552,7 +3334,11 @@ class ArogyaXScreen extends StatefulWidget {
 class _ArogyaXScreenState extends State<ArogyaXScreen> {
   final _controller = TextEditingController();
   final _messages = <ArogyaXMessage>[
-    ArogyaXMessage(text: tr('assistantIntro'), fromUser: false),
+    const ArogyaXMessage(
+      text:
+          'Hi, I am ArogyaX. Ask about symptoms, reports, nearby doctors, hospitals or medicines. Upload a report when you want me to read it.',
+      fromUser: false,
+    ),
   ];
   var _busy = false;
   String _uploadName = '';
@@ -3583,35 +3369,90 @@ class _ArogyaXScreenState extends State<ArogyaXScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 18),
                 children: [
                   AppCard(
-                    padding: const EdgeInsets.all(14),
-                    child: Row(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          width: 46,
-                          height: 46,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF8B5CF6), AppColors.blue],
+                        Row(
+                          children: [
+                            Container(
+                              width: 52,
+                              height: 52,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF8B5CF6), AppColors.blue],
+                                ),
+                                borderRadius: BorderRadius.circular(18),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(
+                                      0xFF8B5CF6,
+                                    ).withValues(alpha: .22),
+                                    blurRadius: 18,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.psychology_alt_rounded,
+                                color: Colors.white,
+                                size: 29,
+                              ),
                             ),
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          child: const Icon(
-                            Icons.psychology_alt_rounded,
-                            color: Colors.white,
-                          ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'ArogyaX Health Assistant',
+                                    style: TextStyle(
+                                      color: palette.text,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Reports, symptoms and nearby care guidance in one chat.',
+                                    style: TextStyle(
+                                      color: palette.muted,
+                                      fontSize: 12,
+                                      height: 1.3,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            appLocation.resolved
-                                ? '${tr('aiSubtitle')} - ${appLocation.label}'
-                                : tr('assistantIntro'),
-                            style: TextStyle(
-                              color: palette.text,
-                              fontWeight: FontWeight.w800,
-                              height: 1.35,
+                        const SizedBox(height: 14),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            _ArogyaXStatusChip(
+                              icon: appLocation.resolved
+                                  ? Icons.gps_fixed_rounded
+                                  : Icons.gps_not_fixed_rounded,
+                              label: appLocation.resolved
+                                  ? 'GPS ready'
+                                  : 'GPS will auto-request',
+                              color: appLocation.resolved
+                                  ? AppColors.green
+                                  : AppColors.gold,
                             ),
-                          ),
+                            _ArogyaXStatusChip(
+                              icon: Icons.upload_file_rounded,
+                              label: _uploadName.isEmpty
+                                  ? 'Report optional'
+                                  : 'Report attached',
+                              color: _uploadName.isEmpty
+                                  ? AppColors.blue
+                                  : AppColors.green,
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -3880,7 +3721,7 @@ class _ArogyaXScreenState extends State<ArogyaXScreen> {
     }).toList();
     return {
       'message': question,
-      'language': appLanguage.mode.name,
+      'language': 'english',
       'location': {
         'resolved': appLocation.resolved,
         'label': appLocation.label,
@@ -3935,6 +3776,45 @@ class _ArogyaXBubble extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ArogyaXStatusChip extends StatelessWidget {
+  const _ArogyaXStatusChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: .22)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -6223,7 +6103,7 @@ class EditableInfoScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final addTitle = appLanguage.isHindi ? '${tt(title)} जोड़ें' : 'Add $title';
+    final addTitle = 'Add $title';
     return Scaffold(
       body: AppPage(
         child: ListView(
@@ -7413,10 +7293,25 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
   }
 }
 
-class AppPage extends StatelessWidget {
+class AppPage extends StatefulWidget {
   const AppPage({super.key, required this.child});
 
   final Widget child;
+
+  @override
+  State<AppPage> createState() => _AppPageState();
+}
+
+class _AppPageState extends State<AppPage> {
+  final _scrollMotion = ValueNotifier<double>(0);
+  Timer? _settleTimer;
+
+  @override
+  void dispose() {
+    _settleTimer?.cancel();
+    _scrollMotion.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -7430,49 +7325,18 @@ class AppPage extends StatelessWidget {
             colors: [palette.pageTop, palette.pageBottom],
           ),
         ),
-        child: ScrollPulseOverlay(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1440),
-              child: child,
+        child: NotificationListener<ScrollNotification>(
+          onNotification: _handleScroll,
+          child: ScrollMotionScope(
+            notifier: _scrollMotion,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1440),
+                child: widget.child,
+              ),
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class ScrollPulseOverlay extends StatefulWidget {
-  const ScrollPulseOverlay({super.key, required this.child});
-
-  final Widget child;
-
-  @override
-  State<ScrollPulseOverlay> createState() => _ScrollPulseOverlayState();
-}
-
-class _ScrollPulseOverlayState extends State<ScrollPulseOverlay> {
-  Timer? _fadeTimer;
-  bool _top = false;
-  bool _bottom = false;
-
-  @override
-  void dispose() {
-    _fadeTimer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return NotificationListener<ScrollNotification>(
-      onNotification: _handleScroll,
-      child: Stack(
-        children: [
-          widget.child,
-          _ScrollEdgePulse(alignment: Alignment.topCenter, visible: _top),
-          _ScrollEdgePulse(alignment: Alignment.bottomCenter, visible: _bottom),
-        ],
       ),
     );
   }
@@ -7481,73 +7345,28 @@ class _ScrollPulseOverlayState extends State<ScrollPulseOverlay> {
     if (notification is ScrollUpdateNotification) {
       final delta = notification.scrollDelta ?? 0;
       if (delta.abs() > .4) {
-        _flash(bottom: delta > 0);
+        _scrollMotion.value = delta > 0 ? -1 : 1;
+        _settleTimer?.cancel();
+        _settleTimer = Timer(const Duration(milliseconds: 160), () {
+          _scrollMotion.value = 0;
+        });
       }
     }
     return false;
   }
-
-  void _flash({required bool bottom}) {
-    if (!mounted) {
-      return;
-    }
-    setState(() {
-      _top = !bottom;
-      _bottom = bottom;
-    });
-    _fadeTimer?.cancel();
-    _fadeTimer = Timer(const Duration(milliseconds: 520), () {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _top = false;
-        _bottom = false;
-      });
-    });
-  }
 }
 
-class _ScrollEdgePulse extends StatelessWidget {
-  const _ScrollEdgePulse({required this.alignment, required this.visible});
+class ScrollMotionScope extends InheritedNotifier<ValueNotifier<double>> {
+  const ScrollMotionScope({
+    super.key,
+    required ValueNotifier<double> notifier,
+    required super.child,
+  }) : super(notifier: notifier);
 
-  final Alignment alignment;
-  final bool visible;
-
-  @override
-  Widget build(BuildContext context) {
-    final top = alignment == Alignment.topCenter;
-    return IgnorePointer(
-      child: Align(
-        alignment: alignment,
-        child: AnimatedOpacity(
-          opacity: visible ? 1 : 0,
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          child: AnimatedSlide(
-            offset: visible ? Offset.zero : Offset(0, top ? -.18 : .18),
-            duration: const Duration(milliseconds: 260),
-            curve: Curves.easeOutCubic,
-            child: Container(
-              width: double.infinity,
-              height: 78,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: top ? Alignment.topCenter : Alignment.bottomCenter,
-                  end: top ? Alignment.bottomCenter : Alignment.topCenter,
-                  colors: [
-                    AppColors.blue.withValues(
-                      alpha: appTheme.mode == AppVisualTheme.black ? .26 : .18,
-                    ),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+  static ValueNotifier<double>? maybeOf(BuildContext context) {
+    return context
+        .dependOnInheritedWidgetOfExactType<ScrollMotionScope>()
+        ?.notifier;
   }
 }
 
@@ -7559,173 +7378,7 @@ class HomeHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const ThemeModeButton(),
-        const Spacer(),
-        const LogoMark(width: 136, height: 52),
-        const Spacer(),
-        const LanguageButton(),
-      ],
-    );
-  }
-}
-
-class LanguageButton extends StatelessWidget {
-  const LanguageButton({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: appLanguage,
-      builder: (context, _) {
-        final palette = AppThemePalette.current;
-        return PopupMenuButton<AppLanguage>(
-          tooltip: tr('language'),
-          initialValue: appLanguage.mode,
-          onSelected: (language) => unawaited(appLanguage.setMode(language)),
-          color: palette.card,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-            side: BorderSide(color: palette.line),
-          ),
-          itemBuilder: (context) => [
-            for (final language in AppLanguage.values)
-              PopupMenuItem(
-                value: language,
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.translate_rounded,
-                      color: language == appLanguage.mode
-                          ? AppColors.blue
-                          : palette.muted,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        language.label,
-                        style: TextStyle(
-                          color: palette.text,
-                          fontWeight: language == appLanguage.mode
-                              ? FontWeight.w900
-                              : FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    if (language == appLanguage.mode)
-                      const Icon(
-                        Icons.check_circle_rounded,
-                        color: AppColors.green,
-                        size: 18,
-                      ),
-                  ],
-                ),
-              ),
-          ],
-          child: Container(
-            width: 40,
-            height: 40,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: palette.card,
-              shape: BoxShape.circle,
-              border: Border.all(color: palette.line),
-              boxShadow: [
-                BoxShadow(
-                  color: palette.shadow.withValues(alpha: .08),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Text(
-              appLanguage.mode.shortLabel,
-              style: TextStyle(
-                color: palette.text,
-                fontWeight: FontWeight.w900,
-                fontSize: 12,
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class ThemeModeButton extends StatelessWidget {
-  const ThemeModeButton({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: appTheme,
-      builder: (context, _) {
-        final palette = AppThemePalette.current;
-        return PopupMenuButton<AppVisualTheme>(
-          tooltip: tt('Change theme'),
-          initialValue: appTheme.mode,
-          onSelected: (mode) => unawaited(appTheme.setMode(mode)),
-          color: palette.card,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-            side: BorderSide(color: palette.line),
-          ),
-          itemBuilder: (context) => [
-            for (final mode in AppVisualTheme.values)
-              PopupMenuItem(
-                value: mode,
-                child: Row(
-                  children: [
-                    Icon(
-                      mode.icon,
-                      color: mode == appTheme.mode
-                          ? AppColors.blue
-                          : palette.muted,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        tt(mode.label),
-                        style: TextStyle(
-                          color: palette.text,
-                          fontWeight: mode == appTheme.mode
-                              ? FontWeight.w900
-                              : FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    if (mode == appTheme.mode)
-                      const Icon(
-                        Icons.check_circle_rounded,
-                        color: AppColors.green,
-                        size: 18,
-                      ),
-                  ],
-                ),
-              ),
-          ],
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: palette.card,
-              shape: BoxShape.circle,
-              border: Border.all(color: palette.line),
-              boxShadow: [
-                BoxShadow(
-                  color: palette.shadow.withValues(alpha: .08),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Icon(appTheme.mode.icon, color: palette.text, size: 20),
-          ),
-        );
-      },
-    );
+    return const Center(child: LogoMark(width: 152, height: 58));
   }
 }
 
@@ -10855,9 +10508,7 @@ class JeevanNavBar extends StatelessWidget {
         border: Border(top: BorderSide(color: palette.line)),
         boxShadow: [
           BoxShadow(
-            color: palette.shadow.withValues(
-              alpha: appTheme.isDark ? .24 : .08,
-            ),
+            color: palette.shadow.withValues(alpha: .08),
             blurRadius: 20,
             offset: const Offset(0, -6),
           ),
@@ -11024,6 +10675,7 @@ class AppCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppThemePalette.current;
+    final motion = ScrollMotionScope.maybeOf(context);
     final card = Container(
       margin: margin,
       padding: padding,
@@ -11033,9 +10685,7 @@ class AppCard extends StatelessWidget {
         border: Border.all(color: palette.line),
         boxShadow: [
           BoxShadow(
-            color: palette.shadow.withValues(
-              alpha: appTheme.isDark ? .22 : .05,
-            ),
+            color: palette.shadow.withValues(alpha: .05),
             blurRadius: 18,
             offset: const Offset(0, 8),
           ),
@@ -11044,14 +10694,29 @@ class AppCard extends StatelessWidget {
       child: child,
     );
 
-    if (onTap == null) {
-      return card;
+    final result = onTap == null
+        ? card
+        : InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: onTap,
+            child: card,
+          );
+
+    if (motion == null) {
+      return result;
     }
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: card,
+    return AnimatedBuilder(
+      animation: motion,
+      child: result,
+      builder: (context, child) {
+        return AnimatedSlide(
+          offset: Offset(0, motion.value * .006),
+          duration: const Duration(milliseconds: 140),
+          curve: Curves.easeOutCubic,
+          child: child,
+        );
+      },
     );
   }
 }
