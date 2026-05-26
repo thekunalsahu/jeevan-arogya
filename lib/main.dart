@@ -11,6 +11,7 @@ import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'supabase_config.dart';
@@ -20,6 +21,8 @@ import 'supabase_service.dart';
 final appLocation = AppLocationController();
 final appData = AppDataController();
 final liveHealthData = LiveHealthDataController();
+final appTheme = AppThemeController();
+final appLanguage = AppLanguageController();
 
 class AppTextEntry {
   const AppTextEntry({
@@ -29,6 +32,9 @@ class AppTextEntry {
     required this.color,
     this.attachmentName = '',
     this.attachmentType = '',
+    this.attachmentData = '',
+    this.attachmentMime = '',
+    this.attachmentSize = 0,
   });
 
   final String title;
@@ -37,6 +43,9 @@ class AppTextEntry {
   final Color color;
   final String attachmentName;
   final String attachmentType;
+  final String attachmentData;
+  final String attachmentMime;
+  final int attachmentSize;
 
   Map<String, dynamic> toJson() => {
     'title': title,
@@ -45,6 +54,9 @@ class AppTextEntry {
     'color': color.toARGB32(),
     'attachmentName': attachmentName,
     'attachmentType': attachmentType,
+    'attachmentData': attachmentData,
+    'attachmentMime': attachmentMime,
+    'attachmentSize': attachmentSize,
   };
 
   factory AppTextEntry.fromJson(Map<String, dynamic> map) {
@@ -60,6 +72,9 @@ class AppTextEntry {
       ),
       attachmentName: map['attachmentName']?.toString() ?? '',
       attachmentType: map['attachmentType']?.toString() ?? '',
+      attachmentData: map['attachmentData']?.toString() ?? '',
+      attachmentMime: map['attachmentMime']?.toString() ?? '',
+      attachmentSize: (map['attachmentSize'] as num?)?.toInt() ?? 0,
     );
   }
 }
@@ -415,6 +430,11 @@ class AppDataController extends ChangeNotifier {
     _changed();
   }
 
+  void removeEntry(List<AppTextEntry> target, AppTextEntry entry) {
+    target.remove(entry);
+    _changed();
+  }
+
   void addEmergencyContact(EmergencyContactEntry contact) {
     emergencyContacts.insert(0, contact);
     _changed();
@@ -465,6 +485,14 @@ class AppDataController extends ChangeNotifier {
   void clearLoginSession() {
     profileName = '';
     profileEmail = '';
+    _changed();
+  }
+
+  void clearActivityData() {
+    threads.clear();
+    appointments.clear();
+    cabRequests.clear();
+    notifications.clear();
     _changed();
   }
 
@@ -525,9 +553,238 @@ class AppDataController extends ChangeNotifier {
   }
 }
 
+enum AppVisualTheme { light, dark, black }
+
+class AppThemeController extends ChangeNotifier {
+  static const _storageKey = 'jeevan_arogya_visual_theme_v1';
+
+  AppVisualTheme _mode = AppVisualTheme.light;
+
+  AppVisualTheme get mode => _mode;
+  bool get isDark => _mode != AppVisualTheme.light;
+  Brightness get brightness => isDark ? Brightness.dark : Brightness.light;
+
+  Future<void> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_storageKey);
+    _mode = AppVisualTheme.values.firstWhere(
+      (theme) => theme.name == raw,
+      orElse: () => AppVisualTheme.light,
+    );
+  }
+
+  Future<void> setMode(AppVisualTheme mode) async {
+    if (_mode == mode) {
+      return;
+    }
+    _mode = mode;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_storageKey, mode.name);
+  }
+}
+
+extension AppVisualThemeLabel on AppVisualTheme {
+  String get label => switch (this) {
+    AppVisualTheme.light => 'Light',
+    AppVisualTheme.dark => 'Dark',
+    AppVisualTheme.black => '100% Black',
+  };
+
+  IconData get icon => switch (this) {
+    AppVisualTheme.light => Icons.light_mode_rounded,
+    AppVisualTheme.dark => Icons.dark_mode_rounded,
+    AppVisualTheme.black => Icons.contrast_rounded,
+  };
+}
+
+class AppThemePalette {
+  const AppThemePalette({
+    required this.pageTop,
+    required this.pageBottom,
+    required this.shell,
+    required this.card,
+    required this.soft,
+    required this.text,
+    required this.muted,
+    required this.line,
+    required this.shadow,
+  });
+
+  final Color pageTop;
+  final Color pageBottom;
+  final Color shell;
+  final Color card;
+  final Color soft;
+  final Color text;
+  final Color muted;
+  final Color line;
+  final Color shadow;
+
+  static AppThemePalette get current => switch (appTheme.mode) {
+    AppVisualTheme.light => const AppThemePalette(
+      pageTop: Colors.white,
+      pageBottom: AppColors.bg,
+      shell: Color(0xFFEFF4FA),
+      card: Colors.white,
+      soft: AppColors.soft,
+      text: AppColors.text,
+      muted: AppColors.muted,
+      line: AppColors.line,
+      shadow: Colors.black,
+    ),
+    AppVisualTheme.dark => const AppThemePalette(
+      pageTop: Color(0xFF111827),
+      pageBottom: Color(0xFF07111F),
+      shell: Color(0xFF020617),
+      card: Color(0xFF111827),
+      soft: Color(0xFF1F2937),
+      text: Color(0xFFEAF1F8),
+      muted: Color(0xFFA8B3C2),
+      line: Color(0xFF273244),
+      shadow: Colors.black,
+    ),
+    AppVisualTheme.black => const AppThemePalette(
+      pageTop: Colors.black,
+      pageBottom: Colors.black,
+      shell: Colors.black,
+      card: Color(0xFF050505),
+      soft: Color(0xFF101010),
+      text: Colors.white,
+      muted: Color(0xFFB9C2CE),
+      line: Color(0xFF1B1B1B),
+      shadow: Colors.black,
+    ),
+  };
+}
+
+enum AppLanguage { english, hindi }
+
+class AppLanguageController extends ChangeNotifier {
+  static const _storageKey = 'jeevan_arogya_language_v1';
+
+  AppLanguage _mode = AppLanguage.english;
+
+  AppLanguage get mode => _mode;
+  bool get isHindi => _mode == AppLanguage.hindi;
+
+  Future<void> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_storageKey);
+    _mode = AppLanguage.values.firstWhere(
+      (language) => language.name == raw,
+      orElse: () => AppLanguage.english,
+    );
+  }
+
+  Future<void> setMode(AppLanguage mode) async {
+    if (_mode == mode) {
+      return;
+    }
+    _mode = mode;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_storageKey, mode.name);
+  }
+}
+
+extension AppLanguageLabel on AppLanguage {
+  String get label => switch (this) {
+    AppLanguage.english => 'English',
+    AppLanguage.hindi => 'हिन्दी',
+  };
+
+  String get shortLabel => switch (this) {
+    AppLanguage.english => 'EN',
+    AppLanguage.hindi => 'HI',
+  };
+}
+
+String tr(String key) {
+  final table = appLanguage.isHindi ? _hiText : _enText;
+  return table[key] ?? _enText[key] ?? key;
+}
+
+String trHello(String firstName) {
+  return appLanguage.isHindi ? 'नमस्ते, $firstName' : 'Hello, $firstName';
+}
+
+const _enText = {
+  'helpToday': 'How can we help\nyou today?',
+  'searchHome': 'Search doctors, hospitals, services...',
+  'findDoctors': 'Find Doctors',
+  'bookAppointments': 'Book appointments',
+  'nearbyHospitals': 'Nearby Hospitals',
+  'findHospitalsNear': 'Find hospitals near you',
+  'emergencyCab': 'Emergency Cab',
+  'bookCabEmergency': 'Book a cab in emergency',
+  'healthSchemes': 'Health Schemes',
+  'ayushmanMore': 'Ayushman Bharat & more',
+  'medicalStores': 'Medical Stores',
+  'janPharmacies': 'Jan Aushadhi & pharmacies',
+  'healthRecords': 'Health Records',
+  'medicalInfo': 'Your medical info',
+  'aiAssistant': 'ArogyaX',
+  'aiSubtitle': 'AI health guide',
+  'viewAll': 'View all',
+  'enableGpsCare': 'Enable GPS for nearby care',
+  'gpsCareSubtitle':
+      'Nearby hospitals and emergency distances appear only after GPS permission.',
+  'fetchHospitals': 'Fetching hospitals',
+  'fetchHospitalsSub': 'OpenStreetMap se nearby hospitals load ho rahe hain.',
+  'noHospitals': 'No nearby hospitals found',
+  'noHospitalsSub': 'Refresh GPS or try again.',
+  'language': 'Language',
+  'arogyaxTitle': 'ArogyaX Assistant',
+  'askArogyaX': 'Ask about symptoms, specialist, hospital, medicine...',
+  'send': 'Send',
+  'uploadReport': 'Upload Report',
+  'uploadImage': 'Upload Image',
+  'clearUpload': 'Clear upload',
+  'assistantIntro':
+      'Tell me your health concern. I can read uploaded report images/text and use your nearby doctors, hospitals and medical stores.',
+};
+
+const _hiText = {
+  'helpToday': 'आज आपकी कैसे\nमदद करें?',
+  'searchHome': 'डॉक्टर, अस्पताल, सेवाएं खोजें...',
+  'findDoctors': 'डॉक्टर खोजें',
+  'bookAppointments': 'अपॉइंटमेंट बुक करें',
+  'nearbyHospitals': 'नजदीकी अस्पताल',
+  'findHospitalsNear': 'पास के अस्पताल देखें',
+  'emergencyCab': 'इमरजेंसी कैब',
+  'bookCabEmergency': 'आपातकाल में कैब बुक करें',
+  'healthSchemes': 'स्वास्थ्य योजनाएं',
+  'ayushmanMore': 'आयुष्मान भारत और अन्य',
+  'medicalStores': 'मेडिकल स्टोर',
+  'janPharmacies': 'जन औषधि और फार्मेसी',
+  'healthRecords': 'हेल्थ रिकॉर्ड',
+  'medicalInfo': 'आपकी मेडिकल जानकारी',
+  'aiAssistant': 'आरोग्यX',
+  'aiSubtitle': 'AI स्वास्थ्य गाइड',
+  'viewAll': 'सभी देखें',
+  'enableGpsCare': 'नजदीकी देखभाल के लिए GPS चालू करें',
+  'gpsCareSubtitle': 'GPS अनुमति के बाद ही नजदीकी अस्पताल और दूरी दिखाई जाएगी।',
+  'fetchHospitals': 'अस्पताल खोजे जा रहे हैं',
+  'fetchHospitalsSub': 'OpenStreetMap से नजदीकी अस्पताल लोड हो रहे हैं।',
+  'noHospitals': 'नजदीकी अस्पताल नहीं मिले',
+  'noHospitalsSub': 'GPS फिर से रिफ्रेश करें या दोबारा कोशिश करें।',
+  'language': 'भाषा',
+  'arogyaxTitle': 'आरोग्यX असिस्टेंट',
+  'askArogyaX': 'लक्षण, विशेषज्ञ, अस्पताल, दवाई पूछें...',
+  'send': 'भेजें',
+  'uploadReport': 'रिपोर्ट अपलोड',
+  'uploadImage': 'इमेज अपलोड',
+  'clearUpload': 'अपलोड हटाएं',
+  'assistantIntro':
+      'अपनी स्वास्थ्य समस्या बताएं। मैं रिपोर्ट इमेज/टेक्स्ट पढ़कर पास के डॉक्टर, अस्पताल और मेडिकल स्टोर के हिसाब से मदद करूंगा।',
+};
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SupabaseConfig.initialize();
+  await appTheme.load();
+  await appLanguage.load();
   await appData.load();
   runApp(const JeevanArogyaApp());
 }
@@ -537,42 +794,61 @@ class JeevanArogyaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Jeevan Arogya',
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.light,
-        scaffoldBackgroundColor: AppColors.bg,
-        fontFamily: 'Roboto',
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.navy,
-          brightness: Brightness.light,
-          primary: AppColors.navy,
-          surface: Colors.white,
-        ),
-      ),
-      builder: (context, child) => ColoredBox(
-        color: const Color(0xFFEFF4FA),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            if (constraints.maxWidth >= 800) {
-              return child ?? const SizedBox.shrink();
-            }
-            final width = constraints.maxWidth < 430
-                ? constraints.maxWidth
-                : 430.0;
-            return Center(
-              child: SizedBox(
-                width: width,
-                height: constraints.maxHeight,
-                child: child ?? const SizedBox.shrink(),
+    return AnimatedBuilder(
+      animation: Listenable.merge([appTheme, appLanguage]),
+      builder: (context, _) {
+        final palette = AppThemePalette.current;
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Jeevan Arogya',
+          theme: ThemeData(
+            useMaterial3: true,
+            brightness: appTheme.brightness,
+            scaffoldBackgroundColor: palette.pageBottom,
+            fontFamily: 'Roboto',
+            textTheme:
+                ThemeData(brightness: appTheme.brightness, fontFamily: 'Roboto')
+                    .textTheme
+                    .apply(bodyColor: palette.text, displayColor: palette.text),
+            inputDecorationTheme: InputDecorationTheme(
+              filled: true,
+              fillColor: palette.soft,
+              hintStyle: TextStyle(color: palette.muted),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
               ),
-            );
-          },
-        ),
-      ),
-      home: const AuthGate(),
+            ),
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: AppColors.navy,
+              brightness: appTheme.brightness,
+              primary: AppColors.navy,
+              surface: palette.card,
+            ),
+          ),
+          builder: (context, child) => ColoredBox(
+            color: palette.shell,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth >= 800) {
+                  return child ?? const SizedBox.shrink();
+                }
+                final width = constraints.maxWidth < 430
+                    ? constraints.maxWidth
+                    : 430.0;
+                return Center(
+                  child: SizedBox(
+                    width: width,
+                    height: constraints.maxHeight,
+                    child: child ?? const SizedBox.shrink(),
+                  ),
+                );
+              },
+            ),
+          ),
+          home: const AuthGate(),
+        );
+      },
     );
   }
 }
@@ -790,6 +1066,9 @@ class Doctor {
     this.latitude,
     this.longitude,
     this.source = '',
+    this.phone = '',
+    this.address = '',
+    this.about = '',
   });
 
   final String id;
@@ -805,6 +1084,9 @@ class Doctor {
   final double? latitude;
   final double? longitude;
   final String source;
+  final String phone;
+  final String address;
+  final String about;
 
   LatLng? get latLng {
     final lat = latitude;
@@ -1086,6 +1368,7 @@ out center 1500;
       final phone = _cleanName(
         tags['phone'] ?? tags['contact:phone'] ?? tags['mobile'],
       );
+      final address = _addressFromTags(tags);
       final openingHours = _cleanName(tags['opening_hours']);
 
       final isHospital = amenity == 'hospital' || healthcare == 'hospital';
@@ -1117,12 +1400,19 @@ out center 1500;
         final key = _placeKey(name, point);
         if (seenDoctors.add(key)) {
           final speciality = _specialityFromTags(tags, amenity, healthcare);
+          final about = _doctorAboutFromTags(
+            name: name,
+            speciality: speciality,
+            address: address,
+            phone: phone,
+            tags: tags,
+          );
           doctors.add(
             Doctor(
               name: name,
               specialty: speciality,
               experience: 'Verified on OpenStreetMap',
-              degree: phone.isEmpty ? 'Call doctor for details' : phone,
+              degree: phone.isEmpty ? 'Contact for details' : phone,
               fee: 'Call',
               rating: 'Live',
               reviews: 'OSM',
@@ -1133,6 +1423,9 @@ out center 1500;
               latitude: point.latitude,
               longitude: point.longitude,
               source: 'OpenStreetMap',
+              phone: phone,
+              address: address,
+              about: about,
             ),
           );
         }
@@ -1202,6 +1495,43 @@ out center 1500;
         .where((part) => part.isNotEmpty)
         .map((part) => part.substring(0, 1).toUpperCase() + part.substring(1))
         .join(', ');
+  }
+
+  String _addressFromTags(Map<String, dynamic> tags) {
+    final direct = _cleanName(
+      tags['addr:full'] ?? tags['addr:street'] ?? tags['addr:place'],
+    );
+    final suburb = _cleanName(
+      tags['addr:suburb'] ?? tags['addr:neighbourhood'],
+    );
+    final city = _cleanName(tags['addr:city']);
+    final parts = [
+      direct,
+      suburb,
+      city,
+    ].where((part) => part.isNotEmpty).toSet().toList();
+    return parts.join(', ');
+  }
+
+  String _doctorAboutFromTags({
+    required String name,
+    required String speciality,
+    required String address,
+    required String phone,
+    required Map<String, dynamic> tags,
+  }) {
+    final description = _cleanName(
+      tags['description'] ?? tags['operator'] ?? tags['healthcare:speciality'],
+    );
+    if (description.isNotEmpty &&
+        description.toLowerCase() != name.toLowerCase()) {
+      return description;
+    }
+    final location = address.isEmpty ? 'your selected GPS area' : address;
+    final contact = phone.isEmpty
+        ? 'Call before visiting to confirm timings and availability.'
+        : 'Contact: $phone.';
+    return '$name is listed as a $speciality provider near $location. $contact';
   }
 }
 
@@ -2649,11 +2979,12 @@ class DesktopRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return Container(
       width: 236,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(right: BorderSide(color: AppColors.line)),
+      decoration: BoxDecoration(
+        color: palette.card,
+        border: Border(right: BorderSide(color: palette.line)),
       ),
       child: SafeArea(
         child: Column(
@@ -2667,7 +2998,7 @@ class DesktopRail extends StatelessWidget {
                 extended: true,
                 selectedIndex: selectedIndex,
                 onDestinationSelected: onChanged,
-                backgroundColor: Colors.white,
+                backgroundColor: palette.card,
                 indicatorColor: AppColors.navy,
                 selectedIconTheme: const IconThemeData(color: Colors.white),
                 selectedLabelTextStyle: const TextStyle(
@@ -2729,14 +3060,14 @@ class HomeScreen extends StatelessWidget {
           HomeHeader(profile: profile, onLogout: onLogout),
           const SizedBox(height: 30),
           Text(
-            'Hello, ${profile.firstName}',
+            trHello(profile.firstName),
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'How can we help\nyou today?',
+          Text(
+            tr('helpToday'),
             style: TextStyle(
-              color: AppColors.text,
+              color: AppThemePalette.current.text,
               fontSize: 27,
               height: 1.08,
               fontWeight: FontWeight.w900,
@@ -2744,7 +3075,7 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 22),
           SearchBox(
-            hint: 'Search doctors, hospitals, services...',
+            hint: tr('searchHome'),
             onSubmitted: (query) {
               final trimmed = query.trim();
               if (trimmed.isEmpty) {
@@ -2777,8 +3108,8 @@ class HomeScreen extends StatelessWidget {
             items: [
               ServiceItem(
                 icon: Icons.medical_services_rounded,
-                title: 'Find Doctors',
-                subtitle: 'Book appointments',
+                title: tr('findDoctors'),
+                subtitle: tr('bookAppointments'),
                 color: AppColors.blue,
                 onTap: () => Navigator.push(
                   context,
@@ -2787,8 +3118,8 @@ class HomeScreen extends StatelessWidget {
               ),
               ServiceItem(
                 icon: Icons.local_hospital_rounded,
-                title: 'Nearby Hospitals',
-                subtitle: 'Find hospitals near you',
+                title: tr('nearbyHospitals'),
+                subtitle: tr('findHospitalsNear'),
                 color: AppColors.blue,
                 onTap: () => Navigator.push(
                   context,
@@ -2798,9 +3129,19 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               ServiceItem(
+                icon: Icons.psychology_alt_rounded,
+                title: tr('aiAssistant'),
+                subtitle: tr('aiSubtitle'),
+                color: const Color(0xFF8B5CF6),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ArogyaXScreen()),
+                ),
+              ),
+              ServiceItem(
                 icon: Icons.local_taxi_rounded,
-                title: 'Emergency Cab',
-                subtitle: 'Book a cab in emergency',
+                title: tr('emergencyCab'),
+                subtitle: tr('bookCabEmergency'),
                 color: const Color(0xFFFF9800),
                 onTap: () => Navigator.push(
                   context,
@@ -2811,8 +3152,8 @@ class HomeScreen extends StatelessWidget {
               ),
               ServiceItem(
                 icon: Icons.health_and_safety_rounded,
-                title: 'Health Schemes',
-                subtitle: 'Ayushman Bharat & more',
+                title: tr('healthSchemes'),
+                subtitle: tr('ayushmanMore'),
                 color: AppColors.green,
                 onTap: () => Navigator.push(
                   context,
@@ -2823,8 +3164,8 @@ class HomeScreen extends StatelessWidget {
               ),
               ServiceItem(
                 icon: Icons.medication_liquid_rounded,
-                title: 'Medical Stores',
-                subtitle: 'Jan Aushadhi & pharmacies',
+                title: tr('medicalStores'),
+                subtitle: tr('janPharmacies'),
                 color: const Color(0xFF80A7D9),
                 onTap: () => Navigator.push(
                   context,
@@ -2833,8 +3174,8 @@ class HomeScreen extends StatelessWidget {
               ),
               ServiceItem(
                 icon: Icons.description_rounded,
-                title: 'Health Records',
-                subtitle: 'Your medical info',
+                title: tr('healthRecords'),
+                subtitle: tr('medicalInfo'),
                 color: const Color(0xFF7D75FF),
                 onTap: () => Navigator.push(
                   context,
@@ -2847,8 +3188,8 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 28),
           SectionHeader(
-            title: 'Nearby Hospitals',
-            action: 'View all',
+            title: tr('nearbyHospitals'),
+            action: tr('viewAll'),
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const NearbyHospitalsScreen()),
@@ -2859,10 +3200,9 @@ class HomeScreen extends StatelessWidget {
             animation: Listenable.merge([appLocation, liveHealthData]),
             builder: (context, _) {
               if (!appLocation.resolved) {
-                return const LocationRequiredPanel(
-                  title: 'Enable GPS for nearby care',
-                  subtitle:
-                      'Nearby hospitals and emergency distances appear only after live GPS permission.',
+                return LocationRequiredPanel(
+                  title: tr('enableGpsCare'),
+                  subtitle: tr('gpsCareSubtitle'),
                   icon: Icons.local_hospital_rounded,
                 );
               }
@@ -2870,18 +3210,16 @@ class HomeScreen extends StatelessWidget {
                 appLocation.current,
               );
               if (liveHealthData.loading && nearby.isEmpty) {
-                return const LiveHealthLoadingCard(
-                  title: 'Fetching real hospitals',
-                  subtitle:
-                      'OpenStreetMap se live nearby hospitals load ho rahe hain.',
+                return LiveHealthLoadingCard(
+                  title: tr('fetchHospitals'),
+                  subtitle: tr('fetchHospitalsSub'),
                 );
               }
               if (nearby.isEmpty) {
-                return const EmptyStateCard(
+                return EmptyStateCard(
                   icon: Icons.local_hospital_outlined,
-                  title: 'No verified live hospitals found',
-                  subtitle:
-                      'Refresh GPS or try again. Fake hospital entries are hidden.',
+                  title: tr('noHospitals'),
+                  subtitle: tr('noHospitalsSub'),
                 );
               }
               return Column(
@@ -2893,6 +3231,411 @@ class HomeScreen extends StatelessWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+}
+
+class ArogyaXMessage {
+  const ArogyaXMessage({required this.text, required this.fromUser});
+
+  final String text;
+  final bool fromUser;
+}
+
+class ArogyaXScreen extends StatefulWidget {
+  const ArogyaXScreen({super.key});
+
+  @override
+  State<ArogyaXScreen> createState() => _ArogyaXScreenState();
+}
+
+class _ArogyaXScreenState extends State<ArogyaXScreen> {
+  final _controller = TextEditingController();
+  final _messages = <ArogyaXMessage>[
+    ArogyaXMessage(text: tr('assistantIntro'), fromUser: false),
+  ];
+  var _busy = false;
+  String _uploadName = '';
+  String _uploadMime = '';
+  String _uploadData = '';
+  String _uploadText = '';
+  int _uploadSize = 0;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
+    return Scaffold(
+      body: AppPage(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
+              child: TopBar(title: tr('arogyaxTitle')),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 18),
+                children: [
+                  AppCard(
+                    padding: const EdgeInsets.all(14),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 46,
+                          height: 46,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF8B5CF6), AppColors.blue],
+                            ),
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: const Icon(
+                            Icons.psychology_alt_rounded,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            appLocation.resolved
+                                ? '${tr('aiSubtitle')} - ${appLocation.label}'
+                                : tr('assistantIntro'),
+                            style: TextStyle(
+                              color: palette.text,
+                              fontWeight: FontWeight.w800,
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  for (final message in _messages) _ArogyaXBubble(message),
+                  if (_busy)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: LiveHealthLoadingCard(
+                        title: 'ArogyaX thinking',
+                        subtitle:
+                            'Report, location and nearby care context is being checked.',
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                child: AppCard(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    children: [
+                      if (_uploadName.isNotEmpty)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.blue.withValues(alpha: .08),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: AppColors.blue.withValues(alpha: .18),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                _uploadMime.startsWith('image/')
+                                    ? Icons.image_rounded
+                                    : Icons.insert_drive_file_rounded,
+                                color: AppColors.blue,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  '$_uploadName (${formatBytes(_uploadSize)})',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: _clearUpload,
+                                child: Text(tr('clearUpload')),
+                              ),
+                            ],
+                          ),
+                        ),
+                      Row(
+                        children: [
+                          IconButton(
+                            tooltip: tr('uploadReport'),
+                            onPressed: _busy ? null : () => _pickUpload(false),
+                            icon: const Icon(Icons.upload_file_rounded),
+                          ),
+                          IconButton(
+                            tooltip: tr('uploadImage'),
+                            onPressed: _busy ? null : () => _pickUpload(true),
+                            icon: const Icon(Icons.image_rounded),
+                          ),
+                          Expanded(
+                            child: TextField(
+                              controller: _controller,
+                              minLines: 1,
+                              maxLines: 4,
+                              decoration: InputDecoration(
+                                hintText: tr('askArogyaX'),
+                                filled: true,
+                                fillColor: palette.soft,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                  borderSide: BorderSide.none,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          CircleIcon(
+                            icon: Icons.send_rounded,
+                            onTap: _busy ? () {} : _send,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickUpload(bool imageOnly) async {
+    final result = await FilePicker.pickFiles(
+      type: imageOnly ? FileType.image : FileType.any,
+      allowMultiple: false,
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) {
+      return;
+    }
+    final file = result.files.first;
+    final bytes = file.bytes;
+    if (bytes == null || bytes.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not read selected file.')),
+      );
+      return;
+    }
+    final mime = inferMimeType(file.name, imageOnly: imageOnly);
+    setState(() {
+      _uploadName = file.name;
+      _uploadMime = mime;
+      _uploadSize = bytes.length;
+      _uploadText = _isTextMime(mime, file.name)
+          ? utf8.decode(bytes, allowMalformed: true)
+          : '';
+      _uploadData = mime.startsWith('image/') ? base64Encode(bytes) : '';
+    });
+  }
+
+  bool _isTextMime(String mime, String name) {
+    final lower = name.toLowerCase();
+    return mime.startsWith('text/') ||
+        lower.endsWith('.txt') ||
+        lower.endsWith('.csv') ||
+        lower.endsWith('.json') ||
+        lower.endsWith('.md');
+  }
+
+  void _clearUpload() {
+    setState(_clearUploadState);
+  }
+
+  Future<void> _send() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty && _uploadName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ask a question or upload a report.')),
+      );
+      return;
+    }
+    if (!appLocation.resolved && !appLocation.loading) {
+      unawaited(appLocation.requestCurrentLocation());
+    }
+    setState(() {
+      _messages.add(
+        ArogyaXMessage(
+          text: text.isEmpty ? 'Uploaded $_uploadName' : text,
+          fromUser: true,
+        ),
+      );
+      _busy = true;
+      _controller.clear();
+    });
+    try {
+      final response = await http
+          .post(
+            _arogyaxUri(),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(_payload(text)),
+          )
+          .timeout(const Duration(seconds: 70));
+      final data = jsonDecode(response.body);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw StateError(data['error']?.toString() ?? 'ArogyaX request failed');
+      }
+      setState(() {
+        _messages.add(
+          ArogyaXMessage(
+            text: data['answer']?.toString() ?? 'No answer received.',
+            fromUser: false,
+          ),
+        );
+        _clearUploadState();
+      });
+    } catch (error) {
+      setState(() {
+        _messages.add(
+          ArogyaXMessage(
+            text:
+                'ArogyaX setup issue: $error\n\nVercel env me GROQ_API_KEY add karke redeploy karo.',
+            fromUser: false,
+          ),
+        );
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _busy = false);
+      }
+    }
+  }
+
+  void _clearUploadState() {
+    _uploadName = '';
+    _uploadMime = '';
+    _uploadData = '';
+    _uploadText = '';
+    _uploadSize = 0;
+  }
+
+  Uri _arogyaxUri() {
+    final base = Uri.base;
+    return Uri(
+      scheme: base.scheme,
+      host: base.host,
+      port: base.hasPort ? base.port : null,
+      path: '/api/arogyax',
+    );
+  }
+
+  Map<String, dynamic> _payload(String question) {
+    final center = appLocation.current;
+    final hospitals = liveHealthData.nearbyHospitals(center).take(6).map((h) {
+      return {
+        'name': h.name,
+        'distance': h.distanceFrom(center),
+        'status': h.status,
+        'phone': h.phone,
+      };
+    }).toList();
+    final doctors = liveHealthData.nearbyDoctors(center).take(8).map((d) {
+      return {
+        'name': d.name,
+        'specialty': d.specialty,
+        'distance': d.latLng == null
+            ? ''
+            : formatDistanceKm(distanceKm(center, d.latLng!)),
+        'phone': d.phone,
+        'address': d.address,
+      };
+    }).toList();
+    final stores = liveHealthData.nearbyKendras(center).take(6).map((s) {
+      return {
+        'name': s.name,
+        'distance': s.distanceFrom(center),
+        'area': s.area,
+        'phone': s.phone,
+      };
+    }).toList();
+    final records = appData.healthRecords.take(8).map((record) {
+      return {
+        'title': record.title,
+        'notes': record.subtitle,
+        'attachment': record.attachmentName,
+        'mime': record.attachmentMime,
+      };
+    }).toList();
+    return {
+      'message': question,
+      'language': appLanguage.mode.name,
+      'location': {
+        'resolved': appLocation.resolved,
+        'label': appLocation.label,
+        'lat': center.latitude,
+        'lng': center.longitude,
+      },
+      'nearbyHospitals': hospitals,
+      'nearbyDoctors': doctors,
+      'medicalStores': stores,
+      'healthRecords': records,
+      'upload': {
+        'name': _uploadName,
+        'mime': _uploadMime,
+        'size': _uploadSize,
+        'text': _uploadText.length > 12000
+            ? _uploadText.substring(0, 12000)
+            : _uploadText,
+        'imageBase64': _uploadData,
+      },
+    };
+  }
+}
+
+class _ArogyaXBubble extends StatelessWidget {
+  const _ArogyaXBubble(this.message);
+
+  final ArogyaXMessage message;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
+    return Align(
+      alignment: message.fromUser
+          ? Alignment.centerRight
+          : Alignment.centerLeft,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 720),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: message.fromUser ? AppColors.blue : palette.card,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: message.fromUser ? AppColors.blue : palette.line,
+          ),
+        ),
+        child: SelectableText(
+          message.text,
+          style: TextStyle(
+            color: message.fromUser ? Colors.white : palette.text,
+            height: 1.4,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ),
     );
   }
@@ -2942,7 +3685,7 @@ class LocationInsightCard extends StatelessWidget {
                       hospital == null
                           ? (appLocation.resolved
                                 ? 'Live hospital data will appear after fetch'
-                                : 'Enable GPS to fetch real nearby care')
+                                : 'Enable GPS to fetch nearby care')
                           : '${hospital.name} - ${hospital.distanceFrom(appLocation.current)}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -3625,11 +4368,7 @@ class DoctorDirectoryList extends StatelessWidget {
   List<Doctor> _filter(List<Doctor> source) {
     final q = query.trim().toLowerCase();
     return source
-        .where(
-          (doctor) =>
-              specialty == 'All' ||
-              doctor.specialty.toLowerCase() == specialty.toLowerCase(),
-        )
+        .where((doctor) => doctorMatchesSpecialty(doctor, specialty))
         .where(
           (doctor) =>
               q.isEmpty ||
@@ -3647,7 +4386,7 @@ class DoctorDirectoryList extends StatelessWidget {
       builder: (context, _) {
         if (liveHealthData.loading && liveHealthData.doctors.isEmpty) {
           return const LiveHealthLoadingCard(
-            title: 'Fetching real doctors',
+            title: 'Fetching doctors',
             subtitle:
                 'OpenStreetMap se live nearby doctor listings aa rahi hain.',
           );
@@ -3663,8 +4402,7 @@ class DoctorDirectoryList extends StatelessWidget {
               const EmptyStateCard(
                 icon: Icons.person_search_rounded,
                 title: 'No verified live doctors found',
-                subtitle:
-                    'Try All filter or refresh GPS. Fake doctor entries are hidden.',
+                subtitle: 'Try All filter or refresh GPS.',
               ),
             for (final doctor in filteredDoctors)
               DoctorCard(
@@ -3681,6 +4419,30 @@ class DoctorDirectoryList extends StatelessWidget {
       },
     );
   }
+}
+
+bool doctorMatchesSpecialty(Doctor doctor, String selected) {
+  if (selected == 'All') {
+    return true;
+  }
+  final specialty = doctor.specialty.toLowerCase();
+  final target = selected.toLowerCase();
+  if (specialty.contains(target)) {
+    return true;
+  }
+  final aliases = <String, List<String>>{
+    'doctor': ['doctor', 'physician', 'general'],
+    'cardiologist': ['cardio', 'heart'],
+    'orthopedic': ['ortho', 'bone', 'orthopaedic'],
+    'general physician': ['general', 'physician', 'medicine'],
+    'ent': ['ent', 'ear', 'nose', 'throat'],
+    'neurologist': ['neuro', 'brain'],
+    'pediatrician': ['paediatric', 'pediatric', 'child'],
+    'gynecologist': ['gyn', 'obstetric', 'women'],
+    'dermatologist': ['derma', 'skin'],
+    'dentist': ['dental', 'dentist'],
+  };
+  return (aliases[target] ?? const []).any(specialty.contains);
 }
 
 class DemoModeNotice extends StatelessWidget {
@@ -3762,7 +4524,7 @@ class DoctorDetailScreen extends StatelessWidget {
                 BackCircle(onTap: () => Navigator.pop(context)),
                 const Spacer(),
                 IconButton(
-                  onPressed: () {},
+                  onPressed: () => shareDoctorDetails(context, doctor),
                   icon: const Icon(Icons.share_outlined, color: AppColors.navy),
                 ),
               ],
@@ -3820,10 +4582,12 @@ class DoctorDetailScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 10),
-                const Expanded(
+                Expanded(
                   child: StatCard(
-                    title: 'Apollo Hospital',
-                    subtitle: 'Malviya Nagar, Indore',
+                    title: doctor.address.isEmpty
+                        ? 'Nearby care'
+                        : doctor.address,
+                    subtitle: 'Location',
                   ),
                 ),
               ],
@@ -3834,12 +4598,12 @@ class DoctorDetailScreen extends StatelessWidget {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 10),
-            const Text(
-              'Dr. Ananya Sharma is a consultant cardiologist with over 10 years of experience in managing heart diseases and performing advanced cardiac procedures.',
-              style: TextStyle(color: AppColors.muted, height: 1.45),
+            Text(
+              doctor.about.isEmpty ? doctorFallbackAbout(doctor) : doctor.about,
+              style: const TextStyle(color: AppColors.muted, height: 1.45),
             ),
             TextButton(
-              onPressed: () {},
+              onPressed: () => showDoctorInfoSheet(context, doctor),
               style: TextButton.styleFrom(
                 alignment: Alignment.centerLeft,
                 padding: EdgeInsets.zero,
@@ -3850,6 +4614,87 @@ class DoctorDetailScreen extends StatelessWidget {
             AppointmentBookingPanel(doctor: doctor),
           ],
         ),
+      ),
+    );
+  }
+}
+
+String doctorFallbackAbout(Doctor doctor) {
+  final source = doctor.source.isEmpty ? 'the care directory' : doctor.source;
+  final contact = doctor.phone.isEmpty
+      ? 'Please call before visiting to confirm availability.'
+      : 'Contact number: ${doctor.phone}.';
+  return '${doctor.name} is listed as a ${doctor.specialty} provider from $source. ${doctor.experience}. $contact';
+}
+
+Future<void> shareDoctorDetails(BuildContext context, Doctor doctor) async {
+  final location = doctor.address.isEmpty ? appLocation.label : doctor.address;
+  final phone = doctor.phone.isEmpty ? doctor.degree : doctor.phone;
+  final lines = [
+    doctor.name,
+    doctor.specialty,
+    'Location: $location',
+    if (phone.isNotEmpty) 'Contact: $phone',
+    'Next slot: ${doctor.nextSlot}',
+    'Shared from Jeevan Arogya',
+  ];
+  await Clipboard.setData(ClipboardData(text: lines.join('\n')));
+  if (context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Doctor details copied for sharing.')),
+    );
+  }
+}
+
+void showDoctorInfoSheet(BuildContext context, Doctor doctor) {
+  showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (context) => Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            doctor.name,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            doctor.about.isEmpty ? doctorFallbackAbout(doctor) : doctor.about,
+          ),
+          const SizedBox(height: 12),
+          InfoLine(
+            icon: Icons.medical_services_rounded,
+            text: doctor.specialty,
+          ),
+          if (doctor.address.isNotEmpty)
+            InfoLine(icon: Icons.location_on_rounded, text: doctor.address),
+          if (doctor.phone.isNotEmpty)
+            InfoLine(icon: Icons.call_rounded, text: doctor.phone),
+        ],
+      ),
+    ),
+  );
+}
+
+class InfoLine extends StatelessWidget {
+  const InfoLine({super.key, required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: AppColors.blue),
+          const SizedBox(width: 8),
+          Expanded(child: Text(text)),
+        ],
       ),
     );
   }
@@ -4071,7 +4916,7 @@ class EmergencyCabScreen extends StatelessWidget {
                         child: LocationRequiredPanel(
                           title: 'Enable GPS for emergency cab',
                           subtitle:
-                              'Pickup, route and nearest hospital drop are shown only after real live GPS is available.',
+                              'Pickup, route and nearest hospital drop are shown after GPS is available.',
                           icon: Icons.local_taxi_rounded,
                         ),
                       ),
@@ -4149,7 +4994,7 @@ class NearbyHospitalsScreen extends StatelessWidget {
                     return const Padding(
                       padding: EdgeInsets.fromLTRB(20, 0, 20, 26),
                       child: LiveHealthLoadingCard(
-                        title: 'Fetching real hospitals',
+                        title: 'Fetching hospitals',
                         subtitle:
                             'OpenStreetMap se user GPS ke aas-paas hospitals aa rahe hain.',
                       ),
@@ -4161,8 +5006,7 @@ class NearbyHospitalsScreen extends StatelessWidget {
                       child: EmptyStateCard(
                         icon: Icons.local_hospital_outlined,
                         title: 'No verified live hospitals found',
-                        subtitle:
-                            'Refresh GPS and try again. Fake static entries are hidden.',
+                        subtitle: 'Refresh GPS and try again.',
                       ),
                     );
                   }
@@ -4407,19 +5251,31 @@ class HealthRecordsScreen extends StatelessWidget {
               buttonLabel: 'Save Record',
               icon: Icons.folder_copy_rounded,
               color: AppColors.blue,
-              onSave: (title, subtitle, attachmentName, attachmentType) {
-                appData.addEntry(
-                  appData.healthRecords,
-                  AppTextEntry(
-                    title: title,
-                    subtitle: subtitle,
-                    icon: Icons.folder_copy_rounded,
-                    color: AppColors.blue,
-                    attachmentName: attachmentName,
-                    attachmentType: attachmentType,
-                  ),
-                );
-              },
+              onSave:
+                  (
+                    title,
+                    subtitle,
+                    attachmentName,
+                    attachmentType,
+                    attachmentData,
+                    attachmentMime,
+                    attachmentSize,
+                  ) {
+                    appData.addEntry(
+                      appData.healthRecords,
+                      AppTextEntry(
+                        title: title,
+                        subtitle: subtitle,
+                        icon: Icons.folder_copy_rounded,
+                        color: AppColors.blue,
+                        attachmentName: attachmentName,
+                        attachmentType: attachmentType,
+                        attachmentData: attachmentData,
+                        attachmentMime: attachmentMime,
+                        attachmentSize: attachmentSize,
+                      ),
+                    );
+                  },
             ),
             const SizedBox(height: 18),
             AnimatedBuilder(
@@ -4428,7 +5284,11 @@ class HealthRecordsScreen extends StatelessWidget {
                 return Column(
                   children: [
                     for (final record in appData.healthRecords)
-                      InfoEntryCard(entry: record),
+                      InfoEntryCard(
+                        entry: record,
+                        onDelete: () =>
+                            appData.removeEntry(appData.healthRecords, record),
+                      ),
                   ],
                 );
               },
@@ -4440,8 +5300,17 @@ class HealthRecordsScreen extends StatelessWidget {
   }
 }
 
-class JanAushadhiScreen extends StatelessWidget {
+enum MedicalStoreFilter { all, janAushadhi }
+
+class JanAushadhiScreen extends StatefulWidget {
   const JanAushadhiScreen({super.key});
+
+  @override
+  State<JanAushadhiScreen> createState() => _JanAushadhiScreenState();
+}
+
+class _JanAushadhiScreenState extends State<JanAushadhiScreen> {
+  var _filter = MedicalStoreFilter.all;
 
   @override
   Widget build(BuildContext context) {
@@ -4454,10 +5323,7 @@ class JanAushadhiScreen extends StatelessWidget {
               child: TopBar(
                 title: 'Medical Stores',
                 trailingIcon: Icons.tune_rounded,
-                trailingOnTap: () => showFilterInfo(
-                  context,
-                  'Jan Aushadhi and medical stores are sorted by live GPS distance. Call a store to confirm stock.',
-                ),
+                trailingOnTap: _showFilterSheet,
                 onBack: () => Navigator.pop(context),
               ),
             ),
@@ -4477,8 +5343,8 @@ class JanAushadhiScreen extends StatelessWidget {
                       ),
                     );
                   }
-                  final nearby = liveHealthData.nearbyKendras(
-                    appLocation.current,
+                  final nearby = _filteredStores(
+                    liveHealthData.nearbyKendras(appLocation.current),
                   );
                   if (liveHealthData.loading && nearby.isEmpty) {
                     return const Padding(
@@ -4497,7 +5363,7 @@ class JanAushadhiScreen extends StatelessWidget {
                         icon: Icons.medication_liquid_rounded,
                         title: 'No medical store live result found',
                         subtitle:
-                            'OpenStreetMap me nearby verified medical store listing nahi mili.',
+                            'OpenStreetMap me nearby medical store listing nahi mili.',
                       ),
                     );
                   }
@@ -4520,6 +5386,60 @@ class JanAushadhiScreen extends StatelessWidget {
       ),
     );
   }
+
+  List<Place> _filteredStores(List<Place> stores) {
+    if (_filter == MedicalStoreFilter.all) {
+      return stores;
+    }
+    return stores.where(isJanAushadhiPlace).toList();
+  }
+
+  void _showFilterSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Filter Medical Stores',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 12),
+              ChoiceChip(
+                label: const Text('All medical stores'),
+                selected: _filter == MedicalStoreFilter.all,
+                onSelected: (_) {
+                  setState(() => _filter = MedicalStoreFilter.all);
+                  Navigator.pop(context);
+                },
+              ),
+              const SizedBox(height: 8),
+              ChoiceChip(
+                label: const Text('Jan Aushadhi only'),
+                selected: _filter == MedicalStoreFilter.janAushadhi,
+                onSelected: (_) {
+                  setState(() => _filter = MedicalStoreFilter.janAushadhi);
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+bool isJanAushadhiPlace(Place place) {
+  final text = '${place.name} ${place.area}'.toLowerCase();
+  return text.contains('jan aushadhi') ||
+      text.contains('janaushadhi') ||
+      text.contains('jan aushadi');
 }
 
 class AppointmentsScreen extends StatelessWidget {
@@ -4818,6 +5738,12 @@ class ProfileScreen extends StatelessWidget {
             ),
           ),
           ProfileMenuItem(
+            icon: Icons.cleaning_services_rounded,
+            title: 'Clear Saved Data',
+            danger: true,
+            onTap: () => showClearSavedDataDialog(context),
+          ),
+          ProfileMenuItem(
             icon: Icons.logout_rounded,
             title: 'Logout',
             danger: true,
@@ -4826,6 +5752,42 @@ class ProfileScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+Future<void> showClearSavedDataDialog(BuildContext context) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) {
+      final palette = AppThemePalette.current;
+      return AlertDialog(
+        backgroundColor: palette.card,
+        title: Text('Clear saved data?', style: TextStyle(color: palette.text)),
+        content: Text(
+          'Messages, cab requests, doctor appointments and activity notifications saved on this device will be deleted.',
+          style: TextStyle(color: palette.muted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Clear Data'),
+          ),
+        ],
+      );
+    },
+  );
+  if (confirmed == true) {
+    appData.clearActivityData();
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Saved app activity cleared.')),
+      );
+    }
   }
 }
 
@@ -4908,19 +5870,31 @@ class EditableInfoScreen extends StatelessWidget {
               color: color,
               allowAttachments: allowAttachments,
               onBeforeSave: onBeforeAdd,
-              onSave: (entryTitle, subtitle, attachmentName, attachmentType) {
-                appData.addEntry(
-                  entries,
-                  AppTextEntry(
-                    title: entryTitle,
-                    subtitle: subtitle,
-                    icon: defaultIcon,
-                    color: color,
-                    attachmentName: attachmentName,
-                    attachmentType: attachmentType,
-                  ),
-                );
-              },
+              onSave:
+                  (
+                    entryTitle,
+                    subtitle,
+                    attachmentName,
+                    attachmentType,
+                    attachmentData,
+                    attachmentMime,
+                    attachmentSize,
+                  ) {
+                    appData.addEntry(
+                      entries,
+                      AppTextEntry(
+                        title: entryTitle,
+                        subtitle: subtitle,
+                        icon: defaultIcon,
+                        color: color,
+                        attachmentName: attachmentName,
+                        attachmentType: attachmentType,
+                        attachmentData: attachmentData,
+                        attachmentMime: attachmentMime,
+                        attachmentSize: attachmentSize,
+                      ),
+                    );
+                  },
             ),
             const SizedBox(height: 18),
             AnimatedBuilder(
@@ -4928,7 +5902,11 @@ class EditableInfoScreen extends StatelessWidget {
               builder: (context, _) {
                 return Column(
                   children: [
-                    for (final entry in entries) InfoEntryCard(entry: entry),
+                    for (final entry in entries)
+                      InfoEntryCard(
+                        entry: entry,
+                        onDelete: () => appData.removeEntry(entries, entry),
+                      ),
                   ],
                 );
               },
@@ -4966,6 +5944,9 @@ class EditableEntryPanel extends StatefulWidget {
     String subtitle,
     String attachmentName,
     String attachmentType,
+    String attachmentData,
+    String attachmentMime,
+    int attachmentSize,
   )
   onSave;
   final Future<void> Function()? onBeforeSave;
@@ -4980,6 +5961,9 @@ class _EditableEntryPanelState extends State<EditableEntryPanel> {
   var _busy = false;
   String _attachmentName = '';
   String _attachmentType = '';
+  String _attachmentData = '';
+  String _attachmentMime = '';
+  int _attachmentSize = 0;
 
   @override
   void dispose() {
@@ -4990,6 +5974,7 @@ class _EditableEntryPanelState extends State<EditableEntryPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return AppCard(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -5016,7 +6001,7 @@ class _EditableEntryPanelState extends State<EditableEntryPanel> {
             decoration: InputDecoration(
               hintText: widget.titleHint,
               filled: true,
-              fillColor: AppColors.soft,
+              fillColor: palette.soft,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
@@ -5031,7 +6016,7 @@ class _EditableEntryPanelState extends State<EditableEntryPanel> {
             decoration: InputDecoration(
               hintText: widget.subtitleHint,
               filled: true,
-              fillColor: AppColors.soft,
+              fillColor: palette.soft,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
@@ -5059,12 +6044,45 @@ class _EditableEntryPanelState extends State<EditableEntryPanel> {
           ],
           if (widget.allowAttachments && _attachmentName.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Text(
-              'Attached: $_attachmentName',
-              style: const TextStyle(
-                color: AppColors.green,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.green.withValues(alpha: .09),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: AppColors.green.withValues(alpha: .22),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _attachmentType == 'image'
+                        ? Icons.image_rounded
+                        : Icons.attach_file_rounded,
+                    color: AppColors.green,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Attached: $_attachmentName (${formatBytes(_attachmentSize)})',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.green,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Remove attachment',
+                    onPressed: _clearAttachment,
+                    icon: const Icon(Icons.close_rounded),
+                    color: AppColors.green,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ],
               ),
             ),
           ],
@@ -5090,11 +6108,18 @@ class _EditableEntryPanelState extends State<EditableEntryPanel> {
     setState(() => _busy = true);
     try {
       await widget.onBeforeSave?.call();
-      widget.onSave(title, subtitle, _attachmentName, _attachmentType);
+      widget.onSave(
+        title,
+        subtitle,
+        _attachmentName,
+        _attachmentType,
+        _attachmentData,
+        _attachmentMime,
+        _attachmentSize,
+      );
       _titleController.clear();
       _subtitleController.clear();
-      _attachmentName = '';
-      _attachmentType = '';
+      _clearAttachment(setStateNow: false);
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -5111,23 +6136,53 @@ class _EditableEntryPanelState extends State<EditableEntryPanel> {
     final result = await FilePicker.pickFiles(
       type: imageOnly ? FileType.image : FileType.any,
       allowMultiple: false,
-      withData: false,
+      withData: true,
     );
     if (result == null || result.files.isEmpty) {
       return;
     }
     final file = result.files.first;
+    final bytes = file.bytes;
+    if (bytes == null || bytes.isEmpty) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not read selected file.')),
+      );
+      return;
+    }
     setState(() {
       _attachmentName = file.name;
       _attachmentType = imageOnly ? 'image' : 'file';
+      _attachmentData = base64Encode(bytes);
+      _attachmentMime = inferMimeType(file.name, imageOnly: imageOnly);
+      _attachmentSize = bytes.length;
     });
+  }
+
+  void _clearAttachment({bool setStateNow = true}) {
+    void clear() {
+      _attachmentName = '';
+      _attachmentType = '';
+      _attachmentData = '';
+      _attachmentMime = '';
+      _attachmentSize = 0;
+    }
+
+    if (setStateNow) {
+      setState(clear);
+    } else {
+      clear();
+    }
   }
 }
 
 class InfoEntryCard extends StatelessWidget {
-  const InfoEntryCard({super.key, required this.entry});
+  const InfoEntryCard({super.key, required this.entry, this.onDelete});
 
   final AppTextEntry entry;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -5183,10 +6238,294 @@ class InfoEntryCard extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(width: 8),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (entry.attachmentName.isNotEmpty)
+                CircleIcon(
+                  icon: Icons.visibility_rounded,
+                  onTap: () => showAttachmentPreview(context, entry),
+                ),
+              if (onDelete != null) ...[
+                if (entry.attachmentName.isNotEmpty) const SizedBox(height: 8),
+                CircleIcon(
+                  icon: Icons.delete_outline_rounded,
+                  onTap: () => confirmDeleteEntry(context, onDelete!),
+                ),
+              ],
+            ],
+          ),
         ],
       ),
     );
   }
+}
+
+Future<void> confirmDeleteEntry(
+  BuildContext context,
+  VoidCallback onDelete,
+) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) {
+      final palette = AppThemePalette.current;
+      return AlertDialog(
+        backgroundColor: palette.card,
+        title: Text('Delete entry?', style: TextStyle(color: palette.text)),
+        content: Text(
+          'This saved item and its uploaded attachment will be removed from this device.',
+          style: TextStyle(color: palette.muted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      );
+    },
+  );
+  if (confirmed == true) {
+    onDelete();
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Deleted.')));
+    }
+  }
+}
+
+void showAttachmentPreview(BuildContext context, AppTextEntry entry) {
+  final bytes = decodeAttachment(entry);
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (context) {
+      final palette = AppThemePalette.current;
+      final canShowText = isTextAttachment(entry);
+      return DraggableScrollableSheet(
+        initialChildSize: .72,
+        minChildSize: .42,
+        maxChildSize: .92,
+        builder: (context, controller) {
+          return Container(
+            decoration: BoxDecoration(
+              color: palette.card,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(28),
+              ),
+              border: Border.all(color: palette.line),
+            ),
+            child: ListView(
+              controller: controller,
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+              children: [
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: palette.line,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: AppColors.green.withValues(alpha: .14),
+                      child: Icon(
+                        entry.attachmentType == 'image'
+                            ? Icons.image_rounded
+                            : Icons.attach_file_rounded,
+                        color: AppColors.green,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            entry.attachmentName,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: palette.text,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${entry.attachmentMime.isEmpty ? 'Saved file' : entry.attachmentMime} - ${formatBytes(entry.attachmentSize)}',
+                            style: TextStyle(
+                              color: palette.muted,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Close',
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(Icons.close_rounded, color: palette.text),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (bytes == null)
+                  EmptyStateCard(
+                    icon: Icons.error_outline_rounded,
+                    title: 'Attachment preview unavailable',
+                    subtitle:
+                        'This older saved item only has the file name. Upload it again to store a previewable copy.',
+                  )
+                else if (entry.attachmentType == 'image')
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: Image.memory(bytes, fit: BoxFit.contain),
+                  )
+                else if (canShowText)
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: palette.soft,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: palette.line),
+                    ),
+                    child: SelectableText(
+                      utf8.decode(bytes, allowMalformed: true),
+                      style: TextStyle(color: palette.text, height: 1.35),
+                    ),
+                  )
+                else
+                  AppCard(
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.insert_drive_file_rounded,
+                          size: 54,
+                          color: AppColors.blue.withValues(alpha: .9),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          'File saved in app data',
+                          style: TextStyle(
+                            color: palette.text,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Use Open File to preview it in a supported browser/app.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: palette.muted, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (bytes != null) ...[
+                  const SizedBox(height: 16),
+                  PrimaryButton(
+                    label: 'Open File',
+                    onTap: () =>
+                        openAttachmentExternally(context, entry, bytes),
+                  ),
+                ],
+              ],
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
+Uint8List? decodeAttachment(AppTextEntry entry) {
+  if (entry.attachmentData.isEmpty) {
+    return null;
+  }
+  try {
+    return base64Decode(entry.attachmentData);
+  } catch (_) {
+    return null;
+  }
+}
+
+bool isTextAttachment(AppTextEntry entry) {
+  final name = entry.attachmentName.toLowerCase();
+  final mime = entry.attachmentMime.toLowerCase();
+  return mime.startsWith('text/') ||
+      name.endsWith('.txt') ||
+      name.endsWith('.csv') ||
+      name.endsWith('.json') ||
+      name.endsWith('.md');
+}
+
+Future<void> openAttachmentExternally(
+  BuildContext context,
+  AppTextEntry entry,
+  Uint8List bytes,
+) async {
+  final uri = Uri.dataFromBytes(
+    bytes,
+    mimeType: entry.attachmentMime.isEmpty
+        ? 'application/octet-stream'
+        : entry.attachmentMime,
+  );
+  var opened = false;
+  try {
+    opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+  } catch (_) {
+    opened = false;
+  }
+  if (!opened && context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('No external app could open this file.')),
+    );
+  }
+}
+
+String inferMimeType(String fileName, {required bool imageOnly}) {
+  final lower = fileName.toLowerCase();
+  if (lower.endsWith('.png')) return 'image/png';
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+  if (lower.endsWith('.webp')) return 'image/webp';
+  if (lower.endsWith('.gif')) return 'image/gif';
+  if (lower.endsWith('.pdf')) return 'application/pdf';
+  if (lower.endsWith('.txt')) return 'text/plain';
+  if (lower.endsWith('.csv')) return 'text/csv';
+  if (lower.endsWith('.json')) return 'application/json';
+  if (lower.endsWith('.doc')) return 'application/msword';
+  if (lower.endsWith('.docx')) {
+    return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  }
+  return imageOnly ? 'image/*' : 'application/octet-stream';
+}
+
+String formatBytes(int bytes) {
+  if (bytes <= 0) {
+    return '0 KB';
+  }
+  const units = ['B', 'KB', 'MB', 'GB'];
+  var size = bytes.toDouble();
+  var unit = 0;
+  while (size >= 1024 && unit < units.length - 1) {
+    size /= 1024;
+    unit++;
+  }
+  final digits = size >= 10 || unit == 0 ? 0 : 1;
+  return '${size.toStringAsFixed(digits)} ${units[unit]}';
 }
 
 class EmergencyContactsScreen extends StatefulWidget {
@@ -5304,6 +6643,7 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
     IconData icon, {
     TextInputType? keyboardType,
   }) {
+    final palette = AppThemePalette.current;
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
@@ -5311,7 +6651,7 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
         prefixIcon: Icon(icon, color: AppColors.navy),
         hintText: hint,
         filled: true,
-        fillColor: AppColors.soft,
+        fillColor: palette.soft,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -5435,6 +6775,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     IconData icon, {
     TextInputType? keyboardType,
   }) {
+    final palette = AppThemePalette.current;
     return TextField(
       controller: controller,
       keyboardType: keyboardType,
@@ -5442,7 +6783,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         prefixIcon: Icon(icon, color: AppColors.navy),
         hintText: hint,
         filled: true,
-        fillColor: AppColors.soft,
+        fillColor: palette.soft,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -5496,6 +6837,7 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return Scaffold(
       body: AppPage(
         child: ListView(
@@ -5511,7 +6853,7 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
                     decoration: InputDecoration(
                       hintText: 'Doctor, hospital, or contact name',
                       filled: true,
-                      fillColor: AppColors.soft,
+                      fillColor: palette.soft,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
@@ -5526,7 +6868,7 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
                     decoration: InputDecoration(
                       hintText: 'Message',
                       filled: true,
-                      fillColor: AppColors.soft,
+                      fillColor: palette.soft,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
@@ -5687,19 +7029,130 @@ class AppPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return SafeArea(
       child: DecoratedBox(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Colors.white, AppColors.bg],
+            colors: [palette.pageTop, palette.pageBottom],
           ),
         ),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1440),
-            child: child,
+        child: ScrollPulseOverlay(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1440),
+              child: child,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ScrollPulseOverlay extends StatefulWidget {
+  const ScrollPulseOverlay({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<ScrollPulseOverlay> createState() => _ScrollPulseOverlayState();
+}
+
+class _ScrollPulseOverlayState extends State<ScrollPulseOverlay> {
+  Timer? _fadeTimer;
+  bool _top = false;
+  bool _bottom = false;
+
+  @override
+  void dispose() {
+    _fadeTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return NotificationListener<ScrollNotification>(
+      onNotification: _handleScroll,
+      child: Stack(
+        children: [
+          widget.child,
+          _ScrollEdgePulse(alignment: Alignment.topCenter, visible: _top),
+          _ScrollEdgePulse(alignment: Alignment.bottomCenter, visible: _bottom),
+        ],
+      ),
+    );
+  }
+
+  bool _handleScroll(ScrollNotification notification) {
+    if (notification is ScrollUpdateNotification) {
+      final delta = notification.scrollDelta ?? 0;
+      if (delta.abs() > .4) {
+        _flash(bottom: delta > 0);
+      }
+    }
+    return false;
+  }
+
+  void _flash({required bool bottom}) {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _top = !bottom;
+      _bottom = bottom;
+    });
+    _fadeTimer?.cancel();
+    _fadeTimer = Timer(const Duration(milliseconds: 520), () {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _top = false;
+        _bottom = false;
+      });
+    });
+  }
+}
+
+class _ScrollEdgePulse extends StatelessWidget {
+  const _ScrollEdgePulse({required this.alignment, required this.visible});
+
+  final Alignment alignment;
+  final bool visible;
+
+  @override
+  Widget build(BuildContext context) {
+    final top = alignment == Alignment.topCenter;
+    return IgnorePointer(
+      child: Align(
+        alignment: alignment,
+        child: AnimatedOpacity(
+          opacity: visible ? 1 : 0,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          child: AnimatedSlide(
+            offset: visible ? Offset.zero : Offset(0, top ? -.18 : .18),
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeOutCubic,
+            child: Container(
+              width: double.infinity,
+              height: 78,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: top ? Alignment.topCenter : Alignment.bottomCenter,
+                  end: top ? Alignment.bottomCenter : Alignment.topCenter,
+                  colors: [
+                    AppColors.blue.withValues(
+                      alpha: appTheme.mode == AppVisualTheme.black ? .26 : .18,
+                    ),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -5717,18 +7170,170 @@ class HomeHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const SizedBox(width: 44),
+        const ThemeModeButton(),
         const Spacer(),
         const LogoMark(width: 136, height: 52),
         const Spacer(),
-        CircleIcon(
-          icon: Icons.notifications_none_rounded,
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const NotificationCenterScreen()),
-          ),
-        ),
+        const LanguageButton(),
       ],
+    );
+  }
+}
+
+class LanguageButton extends StatelessWidget {
+  const LanguageButton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: appLanguage,
+      builder: (context, _) {
+        final palette = AppThemePalette.current;
+        return PopupMenuButton<AppLanguage>(
+          tooltip: tr('language'),
+          initialValue: appLanguage.mode,
+          onSelected: (language) => unawaited(appLanguage.setMode(language)),
+          color: palette.card,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: BorderSide(color: palette.line),
+          ),
+          itemBuilder: (context) => [
+            for (final language in AppLanguage.values)
+              PopupMenuItem(
+                value: language,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.translate_rounded,
+                      color: language == appLanguage.mode
+                          ? AppColors.blue
+                          : palette.muted,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        language.label,
+                        style: TextStyle(
+                          color: palette.text,
+                          fontWeight: language == appLanguage.mode
+                              ? FontWeight.w900
+                              : FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    if (language == appLanguage.mode)
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        color: AppColors.green,
+                        size: 18,
+                      ),
+                  ],
+                ),
+              ),
+          ],
+          child: Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: palette.card,
+              shape: BoxShape.circle,
+              border: Border.all(color: palette.line),
+              boxShadow: [
+                BoxShadow(
+                  color: palette.shadow.withValues(alpha: .08),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Text(
+              appLanguage.mode.shortLabel,
+              style: TextStyle(
+                color: palette.text,
+                fontWeight: FontWeight.w900,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class ThemeModeButton extends StatelessWidget {
+  const ThemeModeButton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: appTheme,
+      builder: (context, _) {
+        final palette = AppThemePalette.current;
+        return PopupMenuButton<AppVisualTheme>(
+          tooltip: 'Change theme',
+          initialValue: appTheme.mode,
+          onSelected: (mode) => unawaited(appTheme.setMode(mode)),
+          color: palette.card,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: BorderSide(color: palette.line),
+          ),
+          itemBuilder: (context) => [
+            for (final mode in AppVisualTheme.values)
+              PopupMenuItem(
+                value: mode,
+                child: Row(
+                  children: [
+                    Icon(
+                      mode.icon,
+                      color: mode == appTheme.mode
+                          ? AppColors.blue
+                          : palette.muted,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        mode.label,
+                        style: TextStyle(
+                          color: palette.text,
+                          fontWeight: mode == appTheme.mode
+                              ? FontWeight.w900
+                              : FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    if (mode == appTheme.mode)
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        color: AppColors.green,
+                        size: 18,
+                      ),
+                  ],
+                ),
+              ),
+          ],
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: palette.card,
+              shape: BoxShape.circle,
+              border: Border.all(color: palette.line),
+              boxShadow: [
+                BoxShadow(
+                  color: palette.shadow.withValues(alpha: .08),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Icon(appTheme.mode.icon, color: palette.text, size: 20),
+          ),
+        );
+      },
     );
   }
 }
@@ -5749,7 +7354,7 @@ class NotificationCenterScreen extends StatelessWidget {
               icon: Icons.notifications_none_rounded,
               title: 'No notifications yet',
               subtitle:
-                  'New appointment, SOS and cab updates will appear here after real activity.',
+                  'New appointment, SOS and cab updates will appear here after activity.',
             ),
           ],
         ),
@@ -5786,17 +7391,19 @@ class CircleIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return InkWell(
       borderRadius: BorderRadius.circular(20),
       onTap: onTap,
       child: Container(
         width: 40,
         height: 40,
-        decoration: const BoxDecoration(
-          color: Colors.white,
+        decoration: BoxDecoration(
+          color: palette.card,
           shape: BoxShape.circle,
+          border: Border.all(color: palette.line),
         ),
-        child: Icon(icon, color: AppColors.text, size: 21),
+        child: Icon(icon, color: palette.text, size: 21),
       ),
     );
   }
@@ -5830,7 +7437,11 @@ class TopBar extends StatelessWidget {
           child: Text(
             title,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+            style: TextStyle(
+              color: AppThemePalette.current.text,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ),
         if (trailingIcon != null)
@@ -5852,10 +7463,13 @@ class BackCircle extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(20),
       onTap: onTap,
-      child: const SizedBox(
+      child: SizedBox(
         width: 40,
         height: 40,
-        child: Icon(Icons.arrow_back_rounded, color: AppColors.text),
+        child: Icon(
+          Icons.arrow_back_rounded,
+          color: AppThemePalette.current.text,
+        ),
       ),
     );
   }
@@ -5900,12 +7514,14 @@ class _SearchBoxState extends State<SearchBox> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return Container(
       height: 56,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: AppColors.soft,
+        color: palette.soft,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: palette.line),
       ),
       child: Row(
         children: [
@@ -5922,10 +7538,7 @@ class _SearchBoxState extends State<SearchBox> {
                 hintText: widget.hint,
                 border: InputBorder.none,
                 isDense: true,
-                hintStyle: const TextStyle(
-                  color: AppColors.muted,
-                  fontSize: 13,
-                ),
+                hintStyle: TextStyle(color: palette.muted, fontSize: 13),
               ),
             ),
           ),
@@ -5935,7 +7548,7 @@ class _SearchBoxState extends State<SearchBox> {
                 ? null
                 : _runSearch,
             icon: const Icon(Icons.search_rounded),
-            color: AppColors.text,
+            color: palette.text,
           ),
         ],
       ),
@@ -5977,7 +7590,7 @@ class _DoctorAvailabilityTickerState extends State<DoctorAvailabilityTicker> {
     if (liveHealthData.loading && visibleDoctors.isEmpty) {
       return const LiveHealthLoadingCard(
         title: 'Finding live doctors',
-        subtitle: 'Real nearby doctor listings are loading.',
+        subtitle: 'Nearby doctor listings are loading.',
       );
     }
     if (visibleDoctors.isEmpty) {
@@ -7455,8 +9068,7 @@ class _EmergencyRideCardState extends State<EmergencyRideCard> {
           return const EmptyStateCard(
             icon: Icons.local_hospital_outlined,
             title: 'No live hospital found nearby',
-            subtitle:
-                'Tap GPS again or call emergency services. The app will not show fake hospital drops.',
+            subtitle: 'Tap GPS again or call emergency services.',
           );
         }
         final hospital = nearest.first;
@@ -8726,32 +10338,29 @@ class ProfileMenuItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return InkWell(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(bottom: BorderSide(color: AppColors.line)),
+        decoration: BoxDecoration(
+          color: palette.card,
+          border: Border(bottom: BorderSide(color: palette.line)),
         ),
         child: Row(
           children: [
-            Icon(
-              icon,
-              color: danger ? AppColors.red : AppColors.text,
-              size: 20,
-            ),
+            Icon(icon, color: danger ? AppColors.red : palette.text, size: 20),
             const SizedBox(width: 13),
             Expanded(
               child: Text(
                 title,
                 style: TextStyle(
-                  color: danger ? AppColors.red : AppColors.text,
+                  color: danger ? AppColors.red : palette.text,
                   fontWeight: FontWeight.w700,
                 ),
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.muted),
+            Icon(Icons.chevron_right_rounded, color: palette.muted),
           ],
         ),
       ),
@@ -8771,13 +10380,17 @@ class JeevanNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: palette.card,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border(top: BorderSide(color: palette.line)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: .08),
+            color: palette.shadow.withValues(
+              alpha: appTheme.isDark ? .24 : .08,
+            ),
             blurRadius: 20,
             offset: const Offset(0, -6),
           ),
@@ -8871,7 +10484,8 @@ class NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? AppColors.navy : AppColors.muted;
+    final palette = AppThemePalette.current;
+    final color = selected ? AppColors.blue : palette.muted;
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: onTap,
@@ -8939,15 +10553,19 @@ class AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
     final card = Container(
       margin: margin,
       padding: padding,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: palette.card,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: palette.line),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: .05),
+            color: palette.shadow.withValues(
+              alpha: appTheme.isDark ? .22 : .05,
+            ),
             blurRadius: 18,
             offset: const Offset(0, 8),
           ),
