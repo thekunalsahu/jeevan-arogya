@@ -14,6 +14,7 @@ class JeevanArogyaRepository {
     'RAPIDO_API_BASE_URL',
     defaultValue: 'https://rapido-backend-api.onrender.com',
   );
+  static const _rapidoTimeout = Duration(seconds: 45);
 
   final SupabaseClient? _client;
 
@@ -188,10 +189,15 @@ class JeevanArogyaRepository {
     required String rideType,
     required String paymentMethod,
   }) async {
-    final normalizedEmail = normalizeEmail(email);
+    final originalEmail = email.trim().toLowerCase();
+    final normalizedEmail = _rapidoEmailFor(
+      email: originalEmail,
+      fullName: fullName,
+    );
     final token = await _rapidoTokenFor(
       fullName: fullName,
       email: normalizedEmail,
+      fallbackSeed: '$originalEmail:$fullName',
     );
     final scheduleTime = DateTime.now()
         .toUtc()
@@ -210,10 +216,10 @@ class JeevanArogyaRepository {
             'scheduleTime': scheduleTime,
             'purpose': 'Emergency hospital ride',
             'specialRequirements':
-                'Jeevan Arogya emergency request | Ride: $rideType | Payment: $paymentMethod | GPS: ${pickupLatitude.toStringAsFixed(6)}, ${pickupLongitude.toStringAsFixed(6)}',
+                'Jeevan Arogya emergency request | Ride: $rideType | Payment: $paymentMethod | App user: ${originalEmail.isEmpty ? normalizedEmail : originalEmail} | GPS: ${pickupLatitude.toStringAsFixed(6)}, ${pickupLongitude.toStringAsFixed(6)}',
           }),
         )
-        .timeout(const Duration(seconds: 18));
+        .timeout(_rapidoTimeout);
     final data = _decodeJsonResponse(response);
     if (response.statusCode < 200 ||
         response.statusCode >= 300 ||
@@ -287,8 +293,32 @@ class JeevanArogyaRepository {
   Future<String> _rapidoTokenFor({
     required String fullName,
     required String email,
+    required String fallbackSeed,
   }) async {
-    final password = _rapidoPassword(email);
+    try {
+      return await _rapidoTokenForEmail(
+        fullName: fullName,
+        email: email,
+        password: _rapidoPassword(email),
+      );
+    } on RapidoApiFailure {
+      final fallbackEmail = _rapidoAliasEmail(fallbackSeed);
+      if (fallbackEmail == email) {
+        rethrow;
+      }
+      return _rapidoTokenForEmail(
+        fullName: fullName,
+        email: fallbackEmail,
+        password: _rapidoPassword(fallbackEmail),
+      );
+    }
+  }
+
+  Future<String> _rapidoTokenForEmail({
+    required String fullName,
+    required String email,
+    required String password,
+  }) async {
     try {
       return await _loginRapido(email: email, password: password);
     } on RapidoApiFailure {
@@ -323,7 +353,7 @@ class JeevanArogyaRepository {
             'role': 'user',
           }),
         )
-        .timeout(const Duration(seconds: 18));
+        .timeout(_rapidoTimeout);
     final data = _decodeJsonResponse(response);
     if (response.statusCode < 200 ||
         response.statusCode >= 300 ||
@@ -345,7 +375,7 @@ class JeevanArogyaRepository {
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'email': email, 'password': password}),
         )
-        .timeout(const Duration(seconds: 18));
+        .timeout(_rapidoTimeout);
     final data = _decodeJsonResponse(response);
     final token = data['data'] is Map ? (data['data'] as Map)['token'] : null;
     if (response.statusCode < 200 ||
@@ -441,6 +471,19 @@ class JeevanArogyaRepository {
       first.length < 2 ? 'Jeevan' : first,
       last.length < 2 ? 'User' : last,
     );
+  }
+
+  String _rapidoEmailFor({required String email, required String fullName}) {
+    final trimmed = email.trim().toLowerCase();
+    final looksValid = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(trimmed);
+    if (looksValid) {
+      return trimmed;
+    }
+    return _rapidoAliasEmail('$fullName:$trimmed');
+  }
+
+  String _rapidoAliasEmail(String seed) {
+    return 'jeevan.${_stableHash(seed).toRadixString(36)}@jeevanarogya.app';
   }
 
   String _rapidoPassword(String email) {

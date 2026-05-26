@@ -7,6 +7,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
@@ -18,6 +19,7 @@ import 'supabase_service.dart';
 
 final appLocation = AppLocationController();
 final appData = AppDataController();
+final liveHealthData = LiveHealthDataController();
 
 class AppTextEntry {
   const AppTextEntry({
@@ -785,6 +787,9 @@ class Doctor {
     required this.reviews,
     required this.nextSlot,
     required this.color,
+    this.latitude,
+    this.longitude,
+    this.source = '',
   });
 
   final String id;
@@ -797,6 +802,18 @@ class Doctor {
   final String reviews;
   final String nextSlot;
   final Color color;
+  final double? latitude;
+  final double? longitude;
+  final String source;
+
+  LatLng? get latLng {
+    final lat = latitude;
+    final lng = longitude;
+    if (lat == null || lng == null) {
+      return null;
+    }
+    return LatLng(lat, lng);
+  }
 }
 
 Doctor doctorFromDb(DbDoctor doctor) {
@@ -860,6 +877,257 @@ class Place {
       formatDistanceKm(distanceKm(userLocation, latLng));
 }
 
+class LiveHealthDataController extends ChangeNotifier {
+  final hospitals = <Hospital>[];
+  final doctors = <Doctor>[];
+  final kendras = <Place>[];
+  bool loading = false;
+  bool loaded = false;
+  String? message;
+  LatLng? _lastCenter;
+
+  Future<void> loadFor(LatLng center) async {
+    final last = _lastCenter;
+    if (loading || (last != null && distanceKm(last, center) < 3 && loaded)) {
+      return;
+    }
+    loading = true;
+    message = 'Fetching live OpenStreetMap health data...';
+    notifyListeners();
+
+    try {
+      final query = _overpassQuery(center);
+      final response = await http
+          .post(
+            Uri.parse('https://overpass-api.de/api/interpreter'),
+            headers: {
+              'Content-Type': 'text/plain; charset=utf-8',
+              'User-Agent': 'JeevanArogya/1.0',
+            },
+            body: query,
+          )
+          .timeout(const Duration(seconds: 35));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw StateError('OpenStreetMap server ${response.statusCode}');
+      }
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) {
+        throw const FormatException('Invalid OpenStreetMap response');
+      }
+      _applyElements(decoded['elements'], center);
+      loaded = true;
+      _lastCenter = center;
+      message =
+          'Live data: ${hospitals.length} hospitals, ${doctors.length} doctors, ${kendras.length} Jan Aushadhi/pharmacies.';
+    } catch (error) {
+      loaded = true;
+      message = 'Live data unavailable: $error';
+      hospitals.clear();
+      doctors.clear();
+      kendras.clear();
+    } finally {
+      loading = false;
+      notifyListeners();
+    }
+  }
+
+  List<Hospital> nearbyHospitals(LatLng center) {
+    return [...hospitals]..sort(
+      (a, b) =>
+          distanceKm(center, a.latLng).compareTo(distanceKm(center, b.latLng)),
+    );
+  }
+
+  List<Doctor> nearbyDoctors(LatLng center) {
+    return [...doctors]..sort((a, b) {
+      final aPoint = a.latLng;
+      final bPoint = b.latLng;
+      if (aPoint == null || bPoint == null) {
+        return a.name.compareTo(b.name);
+      }
+      return distanceKm(center, aPoint).compareTo(distanceKm(center, bPoint));
+    });
+  }
+
+  List<Place> nearbyKendras(LatLng center) {
+    return [...kendras]..sort(
+      (a, b) =>
+          distanceKm(center, a.latLng).compareTo(distanceKm(center, b.latLng)),
+    );
+  }
+
+  String _overpassQuery(LatLng center) {
+    final lat = center.latitude.toStringAsFixed(6);
+    final lng = center.longitude.toStringAsFixed(6);
+    return '''
+[out:json][timeout:30];
+(
+  node["amenity"~"hospital|doctors|pharmacy"](around:25000,$lat,$lng);
+  way["amenity"~"hospital|doctors|pharmacy"](around:25000,$lat,$lng);
+  relation["amenity"~"hospital|doctors|pharmacy"](around:25000,$lat,$lng);
+  node["healthcare"~"hospital|doctor|pharmacy"](around:25000,$lat,$lng);
+  way["healthcare"~"hospital|doctor|pharmacy"](around:25000,$lat,$lng);
+  relation["healthcare"~"hospital|doctor|pharmacy"](around:25000,$lat,$lng);
+);
+out center 1500;
+''';
+  }
+
+  void _applyElements(Object? rawElements, LatLng center) {
+    hospitals.clear();
+    doctors.clear();
+    kendras.clear();
+    final seenHospitals = <String>{};
+    final seenDoctors = <String>{};
+    final seenKendras = <String>{};
+
+    if (rawElements is! List) {
+      return;
+    }
+
+    for (final raw in rawElements.whereType<Map>()) {
+      final item = raw.cast<String, dynamic>();
+      final tags = item['tags'] is Map
+          ? (item['tags'] as Map).cast<String, dynamic>()
+          : <String, dynamic>{};
+      final point = _elementPoint(item);
+      if (point == null) {
+        continue;
+      }
+      final name = _cleanName(
+        tags['name'] ??
+            tags['operator'] ??
+            tags['brand'] ??
+            tags['official_name'],
+      );
+      if (name.isEmpty) {
+        continue;
+      }
+      final amenity = tags['amenity']?.toString().toLowerCase() ?? '';
+      final healthcare = tags['healthcare']?.toString().toLowerCase() ?? '';
+      final lowerName = name.toLowerCase();
+      final phone = _cleanName(
+        tags['phone'] ?? tags['contact:phone'] ?? tags['mobile'],
+      );
+      final openingHours = _cleanName(tags['opening_hours']);
+
+      final isHospital = amenity == 'hospital' || healthcare == 'hospital';
+      final isDoctor = amenity == 'doctors' || healthcare == 'doctor';
+      final isPharmacy = amenity == 'pharmacy' || healthcare == 'pharmacy';
+      final isJanAushadhi =
+          lowerName.contains('jan aushadhi') ||
+          lowerName.contains('janaushadhi') ||
+          lowerName.contains('jan aushadi') ||
+          lowerName.contains('generic medicine');
+
+      if (isHospital) {
+        final key = _placeKey(name, point);
+        if (seenHospitals.add(key)) {
+          hospitals.add(
+            Hospital(
+              name,
+              formatDistanceKm(distanceKm(center, point)),
+              openingHours.contains('24/7') ? '24x7 Open' : 'OpenStreetMap',
+              latitude: point.latitude,
+              longitude: point.longitude,
+              phone: phone.isEmpty ? '+91108' : phone,
+            ),
+          );
+        }
+      }
+
+      if (isDoctor) {
+        final key = _placeKey(name, point);
+        if (seenDoctors.add(key)) {
+          final speciality = _specialityFromTags(tags, amenity, healthcare);
+          doctors.add(
+            Doctor(
+              name: name,
+              specialty: speciality,
+              experience: 'Verified on OpenStreetMap',
+              degree: phone.isEmpty ? 'Call doctor for details' : phone,
+              fee: 'Call',
+              rating: 'Live',
+              reviews: 'OSM',
+              nextSlot: 'Call to confirm',
+              color: isLikelyFemaleDoctorName(name)
+                  ? const Color(0xFFFFEFF8)
+                  : const Color(0xFFE7F4FF),
+              latitude: point.latitude,
+              longitude: point.longitude,
+              source: 'OpenStreetMap',
+            ),
+          );
+        }
+      }
+
+      if (isPharmacy && isJanAushadhi) {
+        final key = _placeKey(name, point);
+        if (seenKendras.add(key)) {
+          kendras.add(
+            Place(
+              name,
+              formatDistanceKm(distanceKm(center, point)),
+              _cleanName(tags['addr:suburb'] ?? tags['addr:city']).isEmpty
+                  ? 'OpenStreetMap'
+                  : _cleanName(tags['addr:suburb'] ?? tags['addr:city']),
+              latitude: point.latitude,
+              longitude: point.longitude,
+              phone: phone.isEmpty ? '+91108' : phone,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  LatLng? _elementPoint(Map<String, dynamic> item) {
+    final lat =
+        (item['lat'] as num?)?.toDouble() ??
+        (item['center'] is Map
+            ? ((item['center'] as Map)['lat'] as num?)?.toDouble()
+            : null);
+    final lng =
+        (item['lon'] as num?)?.toDouble() ??
+        (item['center'] is Map
+            ? ((item['center'] as Map)['lon'] as num?)?.toDouble()
+            : null);
+    if (lat == null || lng == null) {
+      return null;
+    }
+    return LatLng(lat, lng);
+  }
+
+  String _cleanName(Object? value) {
+    return value?.toString().replaceAll(RegExp(r'\s+'), ' ').trim() ?? '';
+  }
+
+  String _placeKey(String name, LatLng point) {
+    return '${name.toLowerCase()}-${point.latitude.toStringAsFixed(4)}-${point.longitude.toStringAsFixed(4)}';
+  }
+
+  String _specialityFromTags(
+    Map<String, dynamic> tags,
+    String amenity,
+    String healthcare,
+  ) {
+    final raw = _cleanName(
+      tags['healthcare:speciality'] ??
+          tags['speciality'] ??
+          tags['healthcare:specialty'],
+    );
+    if (raw.isEmpty) {
+      return 'Doctor';
+    }
+    return raw
+        .split(';')
+        .map((part) => part.replaceAll('_', ' ').trim())
+        .where((part) => part.isNotEmpty)
+        .map((part) => part.substring(0, 1).toUpperCase() + part.substring(1))
+        .join(', ');
+  }
+}
+
 class AppLocationController extends ChangeNotifier {
   LatLng _current = const LatLng(22.7196, 75.8577);
   String _label = 'Indore, Madhya Pradesh';
@@ -907,6 +1175,7 @@ class AppLocationController extends ChangeNotifier {
       _label =
           '${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
       _message = 'Live location updated';
+      unawaited(liveHealthData.loadFor(_current));
     } catch (error) {
       _message = 'Location unavailable: $error';
     } finally {
@@ -935,6 +1204,27 @@ String formatDistanceKm(double km) {
     return '${(km * 1000).round()} m away';
   }
   return '${km.toStringAsFixed(1)} km away';
+}
+
+bool isLikelyFemaleDoctorName(String name) {
+  final lower = name.toLowerCase();
+  const femaleMarkers = [
+    'ananya',
+    'neha',
+    'ritu',
+    'meera',
+    'priyanka',
+    'priya',
+    'pooja',
+    'shreya',
+    'swati',
+    'sonal',
+    'sonia',
+    'mrs',
+    'ms.',
+    'dr. mrs',
+  ];
+  return femaleMarkers.any(lower.contains);
 }
 
 String friendlyAuthError(Object error) {
@@ -2489,7 +2779,7 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           AnimatedBuilder(
-            animation: appLocation,
+            animation: Listenable.merge([appLocation, liveHealthData]),
             builder: (context, _) {
               if (!appLocation.resolved) {
                 return const LocationRequiredPanel(
@@ -2499,13 +2789,24 @@ class HomeScreen extends StatelessWidget {
                   icon: Icons.local_hospital_rounded,
                 );
               }
-              final nearby = [...hospitals]
-                ..sort(
-                  (a, b) => distanceKm(
-                    appLocation.current,
-                    a.latLng,
-                  ).compareTo(distanceKm(appLocation.current, b.latLng)),
+              final nearby = liveHealthData.nearbyHospitals(
+                appLocation.current,
+              );
+              if (liveHealthData.loading && nearby.isEmpty) {
+                return const LiveHealthLoadingCard(
+                  title: 'Fetching real hospitals',
+                  subtitle:
+                      'OpenStreetMap se live nearby hospitals load ho rahe hain.',
                 );
+              }
+              if (nearby.isEmpty) {
+                return const EmptyStateCard(
+                  icon: Icons.local_hospital_outlined,
+                  title: 'No verified live hospitals found',
+                  subtitle:
+                      'Refresh GPS or try again. Fake hospital entries are hidden.',
+                );
+              }
               return Column(
                 children: [
                   for (final hospital in nearby.take(2))
@@ -2526,16 +2827,12 @@ class LocationInsightCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: appLocation,
+      animation: Listenable.merge([appLocation, liveHealthData]),
       builder: (context, _) {
-        final nearestHospital = [...hospitals]
-          ..sort(
-            (a, b) => distanceKm(
-              appLocation.current,
-              a.latLng,
-            ).compareTo(distanceKm(appLocation.current, b.latLng)),
-          );
-        final hospital = nearestHospital.first;
+        final nearestHospital = liveHealthData.nearbyHospitals(
+          appLocation.current,
+        );
+        final hospital = nearestHospital.isEmpty ? null : nearestHospital.first;
         return AppCard(
           padding: const EdgeInsets.all(14),
           child: Row(
@@ -2565,7 +2862,11 @@ class LocationInsightCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      '${hospital.name} - ${hospital.distanceFrom(appLocation.current)}',
+                      hospital == null
+                          ? (appLocation.resolved
+                                ? 'Live hospital data will appear after fetch'
+                                : 'Enable GPS to fetch real nearby care')
+                          : '${hospital.name} - ${hospital.distanceFrom(appLocation.current)}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -2832,7 +3133,7 @@ class SearchResultsScreen extends StatelessWidget {
         icon: Icons.local_hospital_rounded,
         color: AppColors.red,
         builder: (_) => const NearbyHospitalsScreen(),
-        terms: const ['hospital', 'hospitals', 'clinic', 'nearby', '24x7'],
+        terms: const ['hospital', 'hospitals', 'nearby', '24x7'],
       ),
       SearchShortcut(
         title: 'Emergency SOS',
@@ -2892,21 +3193,21 @@ class SearchResultsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final q = query.trim().toLowerCase();
-    final doctorResults = doctors
+    final doctorResults = liveHealthData.doctors
         .where(
           (doctor) =>
               doctor.name.toLowerCase().contains(q) ||
               doctor.specialty.toLowerCase().contains(q),
         )
         .toList();
-    final hospitalResults = hospitals
+    final hospitalResults = liveHealthData.hospitals
         .where(
           (hospital) =>
               hospital.name.toLowerCase().contains(q) ||
               hospital.status.toLowerCase().contains(q),
         )
         .toList();
-    final kendraResults = kendras
+    final kendraResults = liveHealthData.kendras
         .where(
           (place) =>
               place.name.toLowerCase().contains(q) ||
@@ -3016,6 +3317,54 @@ class SearchShortcutCard extends StatelessWidget {
   }
 }
 
+class LiveHealthLoadingCard extends StatelessWidget {
+  const LiveHealthLoadingCard({
+    super.key,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.all(22),
+      child: Row(
+        children: [
+          const SizedBox(
+            width: 34,
+            height: 34,
+            child: CircularProgressIndicator(strokeWidth: 3),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class EmptyStateCard extends StatelessWidget {
   const EmptyStateCard({
     super.key,
@@ -3104,6 +3453,7 @@ class _FindDoctorsScreenState extends State<FindDoctorsScreen> {
                       onSelected: (value) => setState(() => _specialty = value),
                       labels: const [
                         'All',
+                        'Doctor',
                         'Cardiologist',
                         'Orthopedic',
                         'General Physician',
@@ -3153,6 +3503,7 @@ class _FindDoctorsScreenState extends State<FindDoctorsScreen> {
                 children: [
                   for (final label in [
                     'All',
+                    'Doctor',
                     'Cardiologist',
                     'Orthopedic',
                     'General Physician',
@@ -3213,47 +3564,29 @@ class DoctorDirectoryList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!repository.isConnected) {
-      return Column(
-        children: [
-          const DemoModeNotice(
-            text: 'Doctors are demo data. Add Supabase keys for live database.',
-          ),
-          for (final doctor in _filter(doctors))
-            DoctorCard(
-              doctor: doctor,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => DoctorDetailScreen(doctor: doctor),
-                ),
-              ),
-            ),
-        ],
-      );
-    }
-
-    return StreamBuilder<List<DbDoctor>>(
-      stream: repository.watchDoctors(),
-      builder: (context, snapshot) {
-        final liveDoctors = snapshot.data?.map(doctorFromDb).toList();
-        final visibleDoctors = liveDoctors == null || liveDoctors.isEmpty
-            ? doctors
-            : liveDoctors;
-        final filteredDoctors = _filter(visibleDoctors);
+    return AnimatedBuilder(
+      animation: liveHealthData,
+      builder: (context, _) {
+        if (liveHealthData.loading && liveHealthData.doctors.isEmpty) {
+          return const LiveHealthLoadingCard(
+            title: 'Fetching real doctors',
+            subtitle:
+                'OpenStreetMap se live nearby doctor listings aa rahi hain.',
+          );
+        }
+        final filteredDoctors = _filter(
+          liveHealthData.nearbyDoctors(appLocation.current),
+        );
 
         return Column(
           children: [
-            LiveDatabaseNotice(
-              label: snapshot.hasData
-                  ? 'Live doctors synced from Supabase'
-                  : 'Connecting to Supabase doctors...',
-            ),
+            const LiveDatabaseNotice(label: 'Live OpenStreetMap doctor data'),
             if (filteredDoctors.isEmpty)
               const EmptyStateCard(
                 icon: Icons.person_search_rounded,
-                title: 'No matching doctors',
-                subtitle: 'Try another name or specialty.',
+                title: 'No verified live doctors found',
+                subtitle:
+                    'Try All filter or refresh GPS. Fake doctor entries are hidden.',
               ),
             for (final doctor in filteredDoctors)
               DoctorCard(
@@ -3650,7 +3983,7 @@ class EmergencyCabScreen extends StatelessWidget {
             ),
             Expanded(
               child: AnimatedBuilder(
-                animation: appLocation,
+                animation: Listenable.merge([appLocation, liveHealthData]),
                 builder: (context, _) {
                   if (!appLocation.resolved) {
                     return const Padding(
@@ -3718,7 +4051,7 @@ class NearbyHospitalsScreen extends StatelessWidget {
             const SizedBox(height: 12),
             Expanded(
               child: AnimatedBuilder(
-                animation: appLocation,
+                animation: Listenable.merge([appLocation, liveHealthData]),
                 builder: (context, _) {
                   if (!appLocation.resolved) {
                     return const Padding(
@@ -3731,13 +4064,30 @@ class NearbyHospitalsScreen extends StatelessWidget {
                       ),
                     );
                   }
-                  final nearby = [...hospitals]
-                    ..sort(
-                      (a, b) => distanceKm(
-                        appLocation.current,
-                        a.latLng,
-                      ).compareTo(distanceKm(appLocation.current, b.latLng)),
+                  final nearby = liveHealthData.nearbyHospitals(
+                    appLocation.current,
+                  );
+                  if (liveHealthData.loading && nearby.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.fromLTRB(20, 0, 20, 26),
+                      child: LiveHealthLoadingCard(
+                        title: 'Fetching real hospitals',
+                        subtitle:
+                            'OpenStreetMap se user GPS ke aas-paas hospitals aa rahe hain.',
+                      ),
                     );
+                  }
+                  if (nearby.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.fromLTRB(20, 0, 20, 26),
+                      child: EmptyStateCard(
+                        icon: Icons.local_hospital_outlined,
+                        title: 'No verified live hospitals found',
+                        subtitle:
+                            'Refresh GPS and try again. Fake static entries are hidden.',
+                      ),
+                    );
+                  }
                   return ListView(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 26),
                     children: [
@@ -4049,13 +4399,30 @@ class JanAushadhiScreen extends StatelessWidget {
                       ),
                     );
                   }
-                  final nearby = [...kendras]
-                    ..sort(
-                      (a, b) => distanceKm(
-                        appLocation.current,
-                        a.latLng,
-                      ).compareTo(distanceKm(appLocation.current, b.latLng)),
+                  final nearby = liveHealthData.nearbyKendras(
+                    appLocation.current,
+                  );
+                  if (liveHealthData.loading && nearby.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.fromLTRB(20, 0, 20, 26),
+                      child: LiveHealthLoadingCard(
+                        title: 'Fetching Jan Aushadhi stores',
+                        subtitle:
+                            'OpenStreetMap se live pharmacy data load ho raha hai.',
+                      ),
                     );
+                  }
+                  if (nearby.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.fromLTRB(20, 0, 20, 26),
+                      child: EmptyStateCard(
+                        icon: Icons.medication_liquid_rounded,
+                        title: 'No Jan Aushadhi live result found',
+                        subtitle:
+                            'OpenStreetMap me nearby verified Jan Aushadhi listing nahi mili.',
+                      ),
+                    );
+                  }
                   return ListView(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 26),
                     children: [
@@ -5515,7 +5882,7 @@ class _DoctorAvailabilityTickerState extends State<DoctorAvailabilityTicker> {
     super.initState();
     _timer = Timer.periodic(const Duration(seconds: 3), (_) {
       if (mounted) {
-        setState(() => _index = (_index + 1) % doctors.length);
+        setState(() => _index++);
       }
     });
   }
@@ -5528,7 +5895,17 @@ class _DoctorAvailabilityTickerState extends State<DoctorAvailabilityTicker> {
 
   @override
   Widget build(BuildContext context) {
-    final doctor = doctors[_index];
+    final visibleDoctors = liveHealthData.nearbyDoctors(appLocation.current);
+    if (liveHealthData.loading && visibleDoctors.isEmpty) {
+      return const LiveHealthLoadingCard(
+        title: 'Finding live doctors',
+        subtitle: 'Real nearby doctor listings are loading.',
+      );
+    }
+    if (visibleDoctors.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final doctor = visibleDoctors[_index % visibleDoctors.length];
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 420),
       child: AppCard(
@@ -6107,38 +6484,180 @@ class DoctorCard extends StatelessWidget {
   }
 }
 
-class DoctorAvatar extends StatelessWidget {
+class DoctorAvatar extends StatefulWidget {
   const DoctorAvatar({super.key, required this.doctor, this.radius = 34});
 
   final Doctor doctor;
   final double radius;
 
   @override
+  State<DoctorAvatar> createState() => _DoctorAvatarState();
+}
+
+class _DoctorAvatarState extends State<DoctorAvatar>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2600),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      width: radius * 2,
-      height: radius * 2,
-      decoration: BoxDecoration(color: doctor.color, shape: BoxShape.circle),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Icon(
-            Icons.person_rounded,
-            size: radius * 1.35,
-            color: AppColors.navy.withValues(alpha: .58),
-          ),
-          Positioned(
-            right: radius * .34,
-            bottom: radius * .15,
-            child: Icon(
-              Icons.medical_services_rounded,
-              size: radius * .34,
-              color: AppColors.blue,
+    final female = isLikelyFemaleDoctorName(widget.doctor.name);
+    return SizedBox(
+      width: widget.radius * 2,
+      height: widget.radius * 2,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          return CustomPaint(
+            painter: DoctorCartoonPainter(
+              progress: _controller.value,
+              female: female,
+              background: widget.doctor.color,
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
+  }
+}
+
+class DoctorCartoonPainter extends CustomPainter {
+  const DoctorCartoonPainter({
+    required this.progress,
+    required this.female,
+    required this.background,
+  });
+
+  final double progress;
+  final bool female;
+  final Color background;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = size.center(Offset.zero);
+    final r = size.shortestSide / 2;
+    final bob = math.sin(progress * math.pi * 2) * r * .035;
+    final bg = Paint()..color = background;
+    canvas.drawCircle(c, r, bg);
+    canvas.drawCircle(
+      c,
+      r * (.82 + progress * .04),
+      Paint()
+        ..color = Colors.white.withValues(alpha: .24)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = r * .06,
+    );
+
+    final skin = Paint()..color = const Color(0xFFFFD2B7);
+    final hair = Paint()
+      ..color = female ? const Color(0xFF2E1D16) : const Color(0xFF1F2937);
+    final coat = Paint()..color = Colors.white;
+    final navy = Paint()..color = AppColors.navy;
+    final blue = Paint()..color = AppColors.blue;
+    final red = Paint()..color = AppColors.red;
+
+    final headCenter = Offset(c.dx, c.dy - r * .16 + bob);
+    if (female) {
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(c.dx, c.dy - r * .04 + bob),
+          width: r * 1.04,
+          height: r * 1.26,
+        ),
+        hair,
+      );
+    } else {
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(c.dx, c.dy - r * .31 + bob),
+          width: r * .9,
+          height: r * .45,
+        ),
+        hair,
+      );
+    }
+    canvas.drawCircle(headCenter, r * .36, skin);
+    canvas.drawArc(
+      Rect.fromCenter(
+        center: Offset(c.dx, c.dy - r * .30 + bob),
+        width: r * .78,
+        height: r * .45,
+      ),
+      math.pi,
+      math.pi,
+      true,
+      hair,
+    );
+
+    final eyeY = headCenter.dy - r * .03;
+    for (final dx in [-r * .12, r * .12]) {
+      canvas.drawCircle(Offset(c.dx + dx, eyeY), r * .027, navy);
+    }
+    final smile = ui.Path()
+      ..moveTo(c.dx - r * .12, headCenter.dy + r * .13)
+      ..quadraticBezierTo(
+        c.dx,
+        headCenter.dy + r * (.21 + progress * .02),
+        c.dx + r * .12,
+        headCenter.dy + r * .13,
+      );
+    canvas.drawPath(
+      smile,
+      Paint()
+        ..color = AppColors.red.withValues(alpha: .72)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = r * .035
+        ..strokeCap = StrokeCap.round,
+    );
+
+    final bodyTop = c.dy + r * .22 + bob;
+    final body = RRect.fromRectAndRadius(
+      Rect.fromLTWH(c.dx - r * .48, bodyTop, r * .96, r * .72),
+      Radius.circular(r * .18),
+    );
+    canvas.drawRRect(body, coat);
+    canvas.drawLine(
+      Offset(c.dx, bodyTop + r * .04),
+      Offset(c.dx, bodyTop + r * .66),
+      Paint()
+        ..color = AppColors.line
+        ..strokeWidth = r * .025,
+    );
+    canvas.drawCircle(Offset(c.dx - r * .20, bodyTop + r * .26), r * .04, red);
+    canvas.drawLine(
+      Offset(c.dx + r * .16, bodyTop + r * .16),
+      Offset(c.dx + r * .28, bodyTop + r * .36),
+      Paint()
+        ..color = AppColors.blue
+        ..strokeWidth = r * .035
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.drawCircle(
+      Offset(c.dx + r * .30, bodyTop + r * .40),
+      r * .055,
+      blue,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant DoctorCartoonPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.female != female ||
+        oldDelegate.background != background;
   }
 }
 
@@ -6616,13 +7135,16 @@ class MapPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: appLocation,
+      animation: Listenable.merge([appLocation, liveHealthData]),
       builder: (context, _) {
         final user = appLocation.current;
+        final liveHospitals = liveHealthData.nearbyHospitals(user);
+        final liveKendras = liveHealthData.nearbyKendras(user);
         final destination = switch (mode) {
-          MapMode.route => hospitals.first.latLng,
-          MapMode.hospitals => hospitals.first.latLng,
-          MapMode.kendras => kendras.first.latLng,
+          MapMode.route || MapMode.hospitals =>
+            liveHospitals.isEmpty ? null : liveHospitals.first.latLng,
+          MapMode.kendras =>
+            liveKendras.isEmpty ? null : liveKendras.first.latLng,
         };
         final markers = <Marker>[
           Marker(
@@ -6636,7 +7158,7 @@ class MapPanel extends StatelessWidget {
             ),
           ),
           if (mode == MapMode.hospitals || mode == MapMode.route)
-            for (final hospital in hospitals)
+            for (final hospital in liveHospitals)
               Marker(
                 point: hospital.latLng,
                 width: 60,
@@ -6648,7 +7170,7 @@ class MapPanel extends StatelessWidget {
                 ),
               ),
           if (mode == MapMode.kendras)
-            for (final kendra in kendras)
+            for (final kendra in liveKendras)
               Marker(
                 point: kendra.latLng,
                 width: 60,
@@ -6670,7 +7192,7 @@ class MapPanel extends StatelessWidget {
                   '${mode.name}-${user.latitude.toStringAsFixed(4)}-${user.longitude.toStringAsFixed(4)}',
                 ),
                 options: MapOptions(
-                  initialCenter: mode == MapMode.route
+                  initialCenter: mode == MapMode.route && destination != null
                       ? LatLng(
                           (user.latitude + destination.latitude) / 2,
                           (user.longitude + destination.longitude) / 2,
@@ -6684,7 +7206,7 @@ class MapPanel extends StatelessWidget {
                         'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.gravitymeet.gravitymeet',
                   ),
-                  if (mode == MapMode.route)
+                  if (mode == MapMode.route && destination != null)
                     PolylineLayer(
                       polylines: [
                         Polyline(
@@ -6842,15 +7364,23 @@ class _EmergencyRideCardState extends State<EmergencyRideCard> {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: appLocation,
+      animation: Listenable.merge([appLocation, liveHealthData]),
       builder: (context, _) {
-        final nearest = [...hospitals]
-          ..sort(
-            (a, b) => distanceKm(
-              appLocation.current,
-              a.latLng,
-            ).compareTo(distanceKm(appLocation.current, b.latLng)),
+        final nearest = liveHealthData.nearbyHospitals(appLocation.current);
+        if (liveHealthData.loading && nearest.isEmpty) {
+          return const LiveHealthLoadingCard(
+            title: 'Finding nearby hospitals',
+            subtitle: 'Fetching live OpenStreetMap results around your GPS.',
           );
+        }
+        if (nearest.isEmpty) {
+          return const EmptyStateCard(
+            icon: Icons.local_hospital_outlined,
+            title: 'No live hospital found nearby',
+            subtitle:
+                'Tap GPS again or call emergency services. The app will not show fake hospital drops.',
+          );
+        }
         final hospital = nearest.first;
         return AppCard(
           padding: const EdgeInsets.all(20),
@@ -6957,13 +7487,20 @@ class _EmergencyRideCardState extends State<EmergencyRideCard> {
       }
       return;
     }
-    final nearest = [...hospitals]
-      ..sort(
-        (a, b) => distanceKm(
-          appLocation.current,
-          a.latLng,
-        ).compareTo(distanceKm(appLocation.current, b.latLng)),
+    final nearest = liveHealthData.nearbyHospitals(appLocation.current);
+    if (nearest.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No live nearby hospital found. Refresh GPS and try again.',
+          ),
+        ),
       );
+      if (mounted) {
+        setState(() => _requesting = false);
+      }
+      return;
+    }
     final hospital = nearest.first;
     final now = DateTime.now();
     final eta = 4 + (now.second % 5);
@@ -7001,9 +7538,7 @@ class _EmergencyRideCardState extends State<EmergencyRideCard> {
       dropLocation: '${hospital.name}, Indore',
       hospitalName: hospital.name,
       hospitalPhone: hospital.phone,
-      status: liveRide == null
-          ? 'Requested locally'
-          : 'Backend ${liveRide.status}',
+      status: liveRide == null ? 'Cab booking saved' : 'Cab booking requested',
       etaMinutes: eta,
       driverName: drivers[now.second % drivers.length],
       createdAtLabel: formatShortDateTime(now),
