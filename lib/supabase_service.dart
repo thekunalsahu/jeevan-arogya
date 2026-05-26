@@ -10,6 +10,11 @@ class JeevanArogyaRepository {
   JeevanArogyaRepository({SupabaseClient? client})
     : _client = client ?? SupabaseConfig.client;
 
+  static const _rapidoBaseUrl = String.fromEnvironment(
+    'RAPIDO_API_BASE_URL',
+    defaultValue: 'https://rapido-backend-api.onrender.com',
+  );
+
   final SupabaseClient? _client;
 
   bool get isConnected => _client != null;
@@ -173,6 +178,62 @@ class JeevanArogyaRepository {
     return DbCabRequest.fromMap(row);
   }
 
+  Future<RapidoRideResult> requestRapidoRide({
+    required String fullName,
+    required String email,
+    required String pickup,
+    required String dropLocation,
+    required double pickupLatitude,
+    required double pickupLongitude,
+    required String rideType,
+    required String paymentMethod,
+  }) async {
+    final normalizedEmail = normalizeEmail(email);
+    final token = await _rapidoTokenFor(
+      fullName: fullName,
+      email: normalizedEmail,
+    );
+    final scheduleTime = DateTime.now()
+        .toUtc()
+        .add(const Duration(minutes: 8))
+        .toIso8601String();
+    final response = await http
+        .post(
+          _rapidoUri('/api/rides'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode({
+            'pickup': _limitText(pickup, fallback: 'Current GPS pickup'),
+            'drop': _limitText(dropLocation, fallback: 'Nearest hospital'),
+            'scheduleTime': scheduleTime,
+            'purpose': 'Emergency hospital ride',
+            'specialRequirements':
+                'Jeevan Arogya emergency request | Ride: $rideType | Payment: $paymentMethod | GPS: ${pickupLatitude.toStringAsFixed(6)}, ${pickupLongitude.toStringAsFixed(6)}',
+          }),
+        )
+        .timeout(const Duration(seconds: 18));
+    final data = _decodeJsonResponse(response);
+    if (response.statusCode < 200 ||
+        response.statusCode >= 300 ||
+        data['success'] != true) {
+      throw RapidoApiFailure(
+        data['message']?.toString() ?? 'Ride booking failed.',
+      );
+    }
+    final ride = data['data'] is Map ? (data['data'] as Map)['ride'] : null;
+    if (ride is! Map) {
+      throw const RapidoApiFailure('Ride server response was incomplete.');
+    }
+    final rideMap = ride.cast<String, dynamic>();
+    return RapidoRideResult(
+      id: rideMap['_id']?.toString() ?? '',
+      status: rideMap['status']?.toString() ?? 'pending',
+      estimatedFare: (rideMap['estimatedFare'] as num?)?.toInt(),
+    );
+  }
+
   Future<void> upsertProfile({
     required String fullName,
     required String phone,
@@ -221,6 +282,83 @@ class JeevanArogyaRepository {
     return Uri.parse('$origin/api/$path');
   }
 
+  Uri _rapidoUri(String path) => Uri.parse('$_rapidoBaseUrl$path');
+
+  Future<String> _rapidoTokenFor({
+    required String fullName,
+    required String email,
+  }) async {
+    final password = _rapidoPassword(email);
+    try {
+      return await _loginRapido(email: email, password: password);
+    } on RapidoApiFailure {
+      await _registerRapido(
+        fullName: fullName,
+        email: email,
+        password: password,
+      );
+      return _loginRapido(email: email, password: password);
+    }
+  }
+
+  Future<void> _registerRapido({
+    required String fullName,
+    required String email,
+    required String password,
+  }) async {
+    final names = _rapidoNames(fullName);
+    final hash = _stableHash(email);
+    final response = await http
+        .post(
+          _rapidoUri('/api/auth/register'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'firstName': names.$1,
+            'lastName': names.$2,
+            'email': email,
+            'password': password,
+            'phone': '+91${9000000000 + (hash % 999999999)}',
+            'employeeId': 'JA${hash.toRadixString(36).toUpperCase()}',
+            'department': 'Operations',
+            'role': 'user',
+          }),
+        )
+        .timeout(const Duration(seconds: 18));
+    final data = _decodeJsonResponse(response);
+    if (response.statusCode < 200 ||
+        response.statusCode >= 300 ||
+        data['success'] != true) {
+      final message = data['message']?.toString() ?? 'Ride user setup failed.';
+      if (!message.toLowerCase().contains('already exists')) {
+        throw RapidoApiFailure(message);
+      }
+    }
+  }
+
+  Future<String> _loginRapido({
+    required String email,
+    required String password,
+  }) async {
+    final response = await http
+        .post(
+          _rapidoUri('/api/auth/login'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'email': email, 'password': password}),
+        )
+        .timeout(const Duration(seconds: 18));
+    final data = _decodeJsonResponse(response);
+    final token = data['data'] is Map ? (data['data'] as Map)['token'] : null;
+    if (response.statusCode < 200 ||
+        response.statusCode >= 300 ||
+        data['success'] != true ||
+        token == null) {
+      throw RapidoApiFailure(
+        data['message']?.toString() ?? 'Ride backend login failed.',
+      );
+    }
+    return token.toString();
+  }
+
   Future<void> _sendViaEmailOtpService(String email, String fullName) async {
     final response = await http
         .post(
@@ -234,9 +372,7 @@ class JeevanArogyaRepository {
         response.statusCode >= 300 ||
         data['ok'] != true) {
       throw OtpFailure(
-        _cleanOtpMessage(
-          data['error']?.toString() ?? 'Email OTP send failed.',
-        ),
+        _cleanOtpMessage(data['error']?.toString() ?? 'Email OTP send failed.'),
       );
     }
   }
@@ -281,6 +417,53 @@ class JeevanArogyaRepository {
     return {'ok': false, 'error': 'Unexpected OTP server response.'};
   }
 
+  Map<String, dynamic> _decodeJsonResponse(http.Response response) {
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        return decoded;
+      }
+    } on FormatException {
+      throw const RapidoApiFailure('Ride server returned invalid response.');
+    }
+    return {'success': false, 'message': 'Unexpected ride server response.'};
+  }
+
+  (String, String) _rapidoNames(String fullName) {
+    final cleaned = fullName
+        .replaceAll(RegExp(r'[^a-zA-Z\s]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    final parts = cleaned.isEmpty ? <String>[] : cleaned.split(' ');
+    final first = parts.isEmpty ? 'Jeevan' : parts.first;
+    final last = parts.length > 1 ? parts.skip(1).join(' ') : 'User';
+    return (
+      first.length < 2 ? 'Jeevan' : first,
+      last.length < 2 ? 'User' : last,
+    );
+  }
+
+  String _rapidoPassword(String email) {
+    return 'JeevanArogya${_stableHash(email).toRadixString(36)}Aa1!';
+  }
+
+  int _stableHash(String value) {
+    var hash = 0x811c9dc5;
+    for (final code in value.codeUnits) {
+      hash ^= code;
+      hash = (hash * 0x01000193) & 0x7fffffff;
+    }
+    return hash;
+  }
+
+  String _limitText(String value, {required String fallback}) {
+    final text = value.trim().isEmpty ? fallback : value.trim();
+    if (text.length <= 200) {
+      return text.length < 5 ? fallback : text;
+    }
+    return text.substring(0, 200);
+  }
+
   String _cleanOtpMessage(String message) {
     var cleaned = message.trim();
     for (final prefix in [
@@ -299,10 +482,30 @@ class JeevanArogyaRepository {
     }
     return cleaned;
   }
+}
 
+class RapidoRideResult {
+  const RapidoRideResult({
+    required this.id,
+    required this.status,
+    required this.estimatedFare,
+  });
+
+  final String id;
+  final String status;
+  final int? estimatedFare;
 }
 
 class OtpApiUnavailable implements Exception {}
+
+class RapidoApiFailure implements Exception {
+  const RapidoApiFailure(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
 
 class OtpFailure implements Exception {
   const OtpFailure(this.message);

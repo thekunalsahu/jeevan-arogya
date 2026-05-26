@@ -210,6 +210,10 @@ class EmergencyCabRequestEntry {
     required this.etaMinutes,
     required this.driverName,
     required this.createdAtLabel,
+    required this.rideType,
+    required this.paymentMethod,
+    this.backendRideId = '',
+    this.fareLabel = '',
   });
 
   final String pickup;
@@ -220,6 +224,10 @@ class EmergencyCabRequestEntry {
   final int etaMinutes;
   final String driverName;
   final String createdAtLabel;
+  final String rideType;
+  final String paymentMethod;
+  final String backendRideId;
+  final String fareLabel;
 
   Map<String, dynamic> toJson() => {
     'pickup': pickup,
@@ -230,6 +238,10 @@ class EmergencyCabRequestEntry {
     'etaMinutes': etaMinutes,
     'driverName': driverName,
     'createdAtLabel': createdAtLabel,
+    'rideType': rideType,
+    'paymentMethod': paymentMethod,
+    'backendRideId': backendRideId,
+    'fareLabel': fareLabel,
   };
 
   factory EmergencyCabRequestEntry.fromJson(Map<String, dynamic> map) {
@@ -242,6 +254,10 @@ class EmergencyCabRequestEntry {
       etaMinutes: (map['etaMinutes'] as num?)?.toInt() ?? 5,
       driverName: map['driverName']?.toString() ?? 'Emergency cab partner',
       createdAtLabel: map['createdAtLabel']?.toString() ?? '',
+      rideType: map['rideType']?.toString() ?? 'Hatchback',
+      paymentMethod: map['paymentMethod']?.toString() ?? 'Cash',
+      backendRideId: map['backendRideId']?.toString() ?? '',
+      fareLabel: map['fareLabel']?.toString() ?? '',
     );
   }
 }
@@ -1420,7 +1436,7 @@ class _LiveNetworkTextBadgeState extends State<LiveNetworkTextBadge>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1700),
+      duration: const Duration(milliseconds: 3600),
     )..repeat();
   }
 
@@ -2421,7 +2437,9 @@ class HomeScreen extends StatelessWidget {
                 color: const Color(0xFFFF9800),
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const EmergencyCabScreen()),
+                  MaterialPageRoute(
+                    builder: (_) => EmergencyCabScreen(profile: profile),
+                  ),
                 ),
               ),
               ServiceItem(
@@ -3613,7 +3631,9 @@ class EmergencySosScreen extends StatelessWidget {
 }
 
 class EmergencyCabScreen extends StatelessWidget {
-  const EmergencyCabScreen({super.key});
+  const EmergencyCabScreen({super.key, this.profile});
+
+  final AppUserProfile? profile;
 
   @override
   Widget build(BuildContext context) {
@@ -3646,16 +3666,23 @@ class EmergencyCabScreen extends StatelessWidget {
                       ),
                     );
                   }
-                  return const Stack(
-                    children: [
-                      Positioned.fill(child: MapPanel(mode: MapMode.route)),
-                      Positioned(
-                        left: 20,
-                        right: 20,
-                        bottom: 0,
-                        child: EmergencyRideCard(),
-                      ),
-                    ],
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      final mapHeight = constraints.maxWidth >= 900
+                          ? 430.0
+                          : 360.0;
+                      return ListView(
+                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+                        children: [
+                          SizedBox(
+                            height: mapHeight,
+                            child: const MapPanel(mode: MapMode.route),
+                          ),
+                          const SizedBox(height: 14),
+                          EmergencyRideCard(profile: profile),
+                        ],
+                      );
+                    },
                   );
                 },
               ),
@@ -5253,19 +5280,35 @@ class HomeHeader extends StatelessWidget {
           icon: Icons.notifications_none_rounded,
           onTap: () => Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => const SimpleInfoScreen(
-                title: 'Notifications',
-                lines: [
-                  'Appointment reminder: Today 11:30 AM',
-                  'Nearest hospital list updated',
-                  'Medicine refill reminder is active',
-                ],
-              ),
-            ),
+            MaterialPageRoute(builder: (_) => const NotificationCenterScreen()),
           ),
         ),
       ],
+    );
+  }
+}
+
+class NotificationCenterScreen extends StatelessWidget {
+  const NotificationCenterScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: AppPage(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
+          children: const [
+            TopBar(title: 'Notifications'),
+            SizedBox(height: 18),
+            EmptyStateCard(
+              icon: Icons.notifications_none_rounded,
+              title: 'No notifications yet',
+              subtitle:
+                  'New appointment, SOS and cab updates will appear here after real activity.',
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -6779,8 +6822,22 @@ class MapBubble extends StatelessWidget {
   }
 }
 
-class EmergencyRideCard extends StatelessWidget {
-  const EmergencyRideCard({super.key});
+class EmergencyRideCard extends StatefulWidget {
+  const EmergencyRideCard({super.key, this.profile});
+
+  final AppUserProfile? profile;
+
+  @override
+  State<EmergencyRideCard> createState() => _EmergencyRideCardState();
+}
+
+class _EmergencyRideCardState extends State<EmergencyRideCard> {
+  static const _rideTypes = ['Hatchback', 'Sedan', 'SUV', 'Ambulance'];
+  static const _paymentMethods = ['Cash', 'Online'];
+
+  var _rideType = 'Hatchback';
+  var _paymentMethod = 'Cash';
+  var _requesting = false;
 
   @override
   Widget build(BuildContext context) {
@@ -6819,29 +6876,47 @@ class EmergencyRideCard extends StatelessWidget {
                     '${hospital.name} (${hospital.distanceFrom(appLocation.current)})',
               ),
               const SizedBox(height: 8),
-              const Row(
+              Row(
                 children: [
                   Expanded(
                     child: RideInfo(
                       icon: Icons.local_taxi_rounded,
                       title: 'Ride Type',
-                      value: 'Hatchback',
+                      value: _rideType,
+                      onTap: () => _showPicker(
+                        title: 'Select ride type',
+                        values: _rideTypes,
+                        currentValue: _rideType,
+                        onSelected: (value) => setState(() {
+                          _rideType = value;
+                        }),
+                      ),
                     ),
                   ),
-                  SizedBox(width: 10),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: RideInfo(
                       icon: Icons.payments_outlined,
                       title: 'Payment Method',
-                      value: 'Cash',
+                      value: _paymentMethod,
+                      onTap: () => _showPicker(
+                        title: 'Select payment',
+                        values: _paymentMethods,
+                        currentValue: _paymentMethod,
+                        onSelected: (value) => setState(() {
+                          _paymentMethod = value;
+                        }),
+                      ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 18),
               PrimaryButton(
-                label: 'Request Emergency Cab',
-                onTap: () => _requestCab(context),
+                label: _requesting
+                    ? 'Requesting cab...'
+                    : 'Request Emergency Cab',
+                onTap: _requesting ? null : () => _requestCab(context),
               ),
               const SizedBox(height: 12),
               const Center(
@@ -6872,10 +6947,14 @@ class EmergencyRideCard extends StatelessWidget {
   }
 
   Future<void> _requestCab(BuildContext context) async {
+    setState(() => _requesting = true);
     if (!appLocation.resolved && !appLocation.loading) {
       await appLocation.requestCurrentLocation();
     }
     if (!context.mounted) {
+      if (mounted) {
+        setState(() => _requesting = false);
+      }
       return;
     }
     final nearest = [...hospitals]
@@ -6895,47 +6974,124 @@ class EmergencyRideCard extends StatelessWidget {
       'Deepak Patel',
       'Sandeep Sharma',
     ];
+    final profile =
+        widget.profile ??
+        AppUserProfile(
+          name: appData.profileName.isEmpty ? 'User' : appData.profileName,
+          phone: appData.profileEmail,
+        );
+    RapidoRideResult? liveRide;
+    String? liveError;
+    try {
+      liveRide = await JeevanArogyaRepository().requestRapidoRide(
+        fullName: profile.name,
+        email: profile.phone,
+        pickup: appLocation.label,
+        dropLocation: '${hospital.name}, Indore',
+        pickupLatitude: appLocation.current.latitude,
+        pickupLongitude: appLocation.current.longitude,
+        rideType: _rideType,
+        paymentMethod: _paymentMethod,
+      );
+    } catch (error) {
+      liveError = friendlyAuthError(error);
+    }
     final request = EmergencyCabRequestEntry(
       pickup: appLocation.label,
       dropLocation: '${hospital.name}, Indore',
       hospitalName: hospital.name,
       hospitalPhone: hospital.phone,
-      status: 'Requested',
+      status: liveRide == null
+          ? 'Requested locally'
+          : 'Backend ${liveRide.status}',
       etaMinutes: eta,
       driverName: drivers[now.second % drivers.length],
       createdAtLabel: formatShortDateTime(now),
+      rideType: _rideType,
+      paymentMethod: _paymentMethod,
+      backendRideId: liveRide?.id ?? '',
+      fareLabel: liveRide?.estimatedFare == null
+          ? ''
+          : 'Rs. ${liveRide!.estimatedFare}',
     );
-    final repository = JeevanArogyaRepository();
-    var synced = false;
-    try {
-      if (repository.isConnected && repository.currentUser != null) {
-        await repository.requestEmergencyCab(
-          pickup: request.pickup,
-          dropLocation: request.dropLocation,
-          pickupLatitude: appLocation.current.latitude,
-          pickupLongitude: appLocation.current.longitude,
-        );
-        synced = true;
-      }
-    } catch (_) {
-      synced = false;
-    }
     appData.addCabRequest(request);
     if (!context.mounted) {
+      if (mounted) {
+        setState(() => _requesting = false);
+      }
       return;
     }
+    setState(() => _requesting = false);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          synced
-              ? 'Emergency cab requested and synced. ETA $eta min.'
-              : 'Emergency cab requested. ETA $eta min.',
+          liveRide == null
+              ? 'Cab saved locally. Backend sync failed: ${liveError ?? 'try again'}'
+              : 'Ride saved to backend. ETA $eta min. Fare ${request.fareLabel}.',
         ),
         action: SnackBarAction(
           label: 'Call',
           onPressed: () => callPhone(context, hospital.phone),
         ),
       ),
+    );
+  }
+
+  Future<void> _showPicker({
+    required String title,
+    required List<String> values,
+    required String currentValue,
+    required ValueChanged<String> onSelected,
+  }) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 6, 20, 22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                for (final value in values)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: CircleAvatar(
+                      backgroundColor: value == currentValue
+                          ? AppColors.navy
+                          : AppColors.soft,
+                      child: Icon(
+                        value == currentValue
+                            ? Icons.check_rounded
+                            : Icons.circle_outlined,
+                        color: value == currentValue
+                            ? Colors.white
+                            : AppColors.muted,
+                      ),
+                    ),
+                    title: Text(
+                      value,
+                      style: const TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                    onTap: () {
+                      onSelected(value);
+                      Navigator.pop(context);
+                    },
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -6998,6 +7154,32 @@ class CabRequestStatusCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _CabMetaChip(
+                icon: Icons.local_taxi_rounded,
+                label: request.rideType,
+              ),
+              _CabMetaChip(
+                icon: Icons.payments_outlined,
+                label: request.paymentMethod,
+              ),
+              if (request.fareLabel.isNotEmpty)
+                _CabMetaChip(
+                  icon: Icons.currency_rupee_rounded,
+                  label: request.fareLabel,
+                ),
+              if (request.backendRideId.isNotEmpty)
+                _CabMetaChip(
+                  icon: Icons.cloud_done_rounded,
+                  label:
+                      'Ride ${request.backendRideId.substring(0, math.min(6, request.backendRideId.length))}',
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
           Text(
             request.dropLocation,
             maxLines: 1,
@@ -7014,6 +7196,36 @@ class CabRequestStatusCard extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(color: AppColors.muted, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CabMetaChip extends StatelessWidget {
+  const _CabMetaChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.line),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: AppColors.navy),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
           ),
         ],
       ),
@@ -7076,48 +7288,58 @@ class RideInfo extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.value,
+    this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String value;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.soft,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.navy, size: 20),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(color: AppColors.muted, fontSize: 10),
-                ),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 12,
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.soft,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.line),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: AppColors.navy, size: 20),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 10,
+                    ),
                   ),
-                ),
-              ],
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const Icon(
-            Icons.chevron_right_rounded,
-            color: AppColors.muted,
-            size: 18,
-          ),
-        ],
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: AppColors.muted,
+              size: 18,
+            ),
+          ],
+        ),
       ),
     );
   }
