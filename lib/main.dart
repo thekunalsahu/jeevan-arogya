@@ -892,33 +892,17 @@ class LiveHealthDataController extends ChangeNotifier {
       return;
     }
     loading = true;
-    message = 'Fetching live OpenStreetMap health data...';
+    message = 'Fetching live OpenStreetMap health data around your GPS...';
     notifyListeners();
 
     try {
       final query = _overpassQuery(center);
-      final response = await http
-          .post(
-            Uri.parse('https://overpass-api.de/api/interpreter'),
-            headers: {
-              'Content-Type': 'text/plain; charset=utf-8',
-              'User-Agent': 'JeevanArogya/1.0',
-            },
-            body: query,
-          )
-          .timeout(const Duration(seconds: 35));
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw StateError('OpenStreetMap server ${response.statusCode}');
-      }
-      final decoded = jsonDecode(response.body);
-      if (decoded is! Map<String, dynamic>) {
-        throw const FormatException('Invalid OpenStreetMap response');
-      }
+      final decoded = await _fetchLivePlaces(center, query);
       _applyElements(decoded['elements'], center);
       loaded = true;
       _lastCenter = center;
       message =
-          'Live data: ${hospitals.length} hospitals, ${doctors.length} doctors, ${kendras.length} Jan Aushadhi/pharmacies.';
+          'Live data: ${hospitals.length} hospitals, ${doctors.length} doctors, ${kendras.length} medical stores.';
     } catch (error) {
       loaded = true;
       message = 'Live data unavailable: $error';
@@ -929,6 +913,99 @@ class LiveHealthDataController extends ChangeNotifier {
       loading = false;
       notifyListeners();
     }
+  }
+
+  Future<Map<String, dynamic>> _fetchLivePlaces(
+    LatLng center,
+    String query,
+  ) async {
+    final errors = <String>[];
+    final proxy = _healthPlacesProxyUri(center);
+    if (proxy != null) {
+      try {
+        final response = await http
+            .get(proxy, headers: {'Accept': 'application/json'})
+            .timeout(const Duration(seconds: 42));
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          return _decodeHealthJson(response.body, 'health proxy');
+        }
+        errors.add(
+          'health proxy ${response.statusCode}: ${_shortBody(response.body)}',
+        );
+      } catch (error) {
+        errors.add('health proxy: $error');
+      }
+    }
+
+    const endpoints = [
+      'https://overpass-api.de/api/interpreter',
+      'https://overpass.kumi.systems/api/interpreter',
+    ];
+    for (final endpoint in endpoints) {
+      try {
+        final response = await http
+            .post(
+              Uri.parse(endpoint),
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'text/plain; charset=utf-8',
+              },
+              body: query,
+            )
+            .timeout(const Duration(seconds: 35));
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          return _decodeHealthJson(response.body, endpoint);
+        }
+        errors.add(
+          '$endpoint ${response.statusCode}: ${_shortBody(response.body)}',
+        );
+      } catch (error) {
+        errors.add('$endpoint: $error');
+      }
+    }
+
+    throw StateError(errors.join(' | '));
+  }
+
+  Uri? _healthPlacesProxyUri(LatLng center) {
+    final base = Uri.base;
+    if (base.scheme != 'http' && base.scheme != 'https') {
+      return null;
+    }
+    return Uri(
+      scheme: base.scheme,
+      host: base.host,
+      port: base.hasPort ? base.port : null,
+      path: '/api/health_places',
+      queryParameters: {
+        'lat': center.latitude.toStringAsFixed(6),
+        'lng': center.longitude.toStringAsFixed(6),
+      },
+    );
+  }
+
+  Map<String, dynamic> _decodeHealthJson(String body, String source) {
+    final trimmed = body.trimLeft();
+    if (trimmed.startsWith('<')) {
+      throw FormatException('$source returned app HTML instead of JSON');
+    }
+    final decoded = jsonDecode(body);
+    if (decoded is! Map) {
+      throw FormatException('$source returned invalid JSON');
+    }
+    final map = decoded.cast<String, dynamic>();
+    if (map['elements'] is! List) {
+      throw FormatException('$source response missing places');
+    }
+    return map;
+  }
+
+  String _shortBody(String body) {
+    final cleaned = body.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (cleaned.length <= 160) {
+      return cleaned;
+    }
+    return '${cleaned.substring(0, 160)}...';
   }
 
   List<Hospital> nearbyHospitals(LatLng center) {
@@ -1061,16 +1138,16 @@ out center 1500;
         }
       }
 
-      if (isPharmacy && isJanAushadhi) {
+      if (isPharmacy) {
         final key = _placeKey(name, point);
         if (seenKendras.add(key)) {
+          final area = _cleanName(tags['addr:suburb'] ?? tags['addr:city']);
+          final storeType = isJanAushadhi ? 'Jan Aushadhi' : 'Medical Store';
           kendras.add(
             Place(
               name,
               formatDistanceKm(distanceKm(center, point)),
-              _cleanName(tags['addr:suburb'] ?? tags['addr:city']).isEmpty
-                  ? 'OpenStreetMap'
-                  : _cleanName(tags['addr:suburb'] ?? tags['addr:city']),
+              area.isEmpty ? storeType : '$storeType - $area',
               latitude: point.latitude,
               longitude: point.longitude,
               phone: phone.isEmpty ? '+91108' : phone,
@@ -2746,8 +2823,8 @@ class HomeScreen extends StatelessWidget {
               ),
               ServiceItem(
                 icon: Icons.medication_liquid_rounded,
-                title: 'Jan Aushadhi Kendras',
-                subtitle: 'Find nearest stores',
+                title: 'Medical Stores',
+                subtitle: 'Jan Aushadhi & pharmacies',
                 color: const Color(0xFF80A7D9),
                 onTap: () => Navigator.push(
                   context,
@@ -3144,7 +3221,7 @@ class SearchResultsScreen extends StatelessWidget {
         terms: const ['sos', 'emergency', 'help', 'urgent', 'alert'],
       ),
       SearchShortcut(
-        title: 'Jan Aushadhi Kendras',
+        title: 'Medical Stores',
         subtitle: 'Find affordable medicine stores near you',
         icon: Icons.medication_liquid_rounded,
         color: AppColors.green,
@@ -3153,6 +3230,7 @@ class SearchResultsScreen extends StatelessWidget {
           'jan aushadhi',
           'medicine',
           'pharmacy',
+          'medical',
           'kendra',
           'generic',
         ],
@@ -4374,11 +4452,11 @@ class JanAushadhiScreen extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
               child: TopBar(
-                title: 'Jan Aushadhi Kendras',
+                title: 'Medical Stores',
                 trailingIcon: Icons.tune_rounded,
                 trailingOnTap: () => showFilterInfo(
                   context,
-                  'Jan Aushadhi stores are sorted by live GPS distance. Call a store to confirm stock.',
+                  'Jan Aushadhi and medical stores are sorted by live GPS distance. Call a store to confirm stock.',
                 ),
                 onBack: () => Navigator.pop(context),
               ),
@@ -4392,7 +4470,7 @@ class JanAushadhiScreen extends StatelessWidget {
                     return const Padding(
                       padding: EdgeInsets.fromLTRB(20, 0, 20, 26),
                       child: LocationRequiredPanel(
-                        title: 'Enable GPS for Jan Aushadhi',
+                        title: 'Enable GPS for Medical Stores',
                         subtitle:
                             'Nearest store list, distance and map are hidden until live GPS permission is allowed.',
                         icon: Icons.medication_liquid_rounded,
@@ -4406,7 +4484,7 @@ class JanAushadhiScreen extends StatelessWidget {
                     return const Padding(
                       padding: EdgeInsets.fromLTRB(20, 0, 20, 26),
                       child: LiveHealthLoadingCard(
-                        title: 'Fetching Jan Aushadhi stores',
+                        title: 'Fetching Medical Stores',
                         subtitle:
                             'OpenStreetMap se live pharmacy data load ho raha hai.',
                       ),
@@ -4417,9 +4495,9 @@ class JanAushadhiScreen extends StatelessWidget {
                       padding: EdgeInsets.fromLTRB(20, 0, 20, 26),
                       child: EmptyStateCard(
                         icon: Icons.medication_liquid_rounded,
-                        title: 'No Jan Aushadhi live result found',
+                        title: 'No medical store live result found',
                         subtitle:
-                            'OpenStreetMap me nearby verified Jan Aushadhi listing nahi mili.',
+                            'OpenStreetMap me nearby verified medical store listing nahi mili.',
                       ),
                     );
                   }
@@ -7243,7 +7321,7 @@ class MapLocationToolbar extends StatelessWidget {
     final title = switch (mode) {
       MapMode.route => 'Live emergency route',
       MapMode.hospitals => 'Hospitals near you',
-      MapMode.kendras => 'Jan Aushadhi near you',
+      MapMode.kendras => 'Medical stores near you',
     };
     return DecoratedBox(
       decoration: BoxDecoration(
