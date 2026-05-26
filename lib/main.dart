@@ -710,7 +710,7 @@ const _enText = {
   'gpsCareSubtitle':
       'Nearby hospitals and emergency distances appear only after GPS permission.',
   'fetchHospitals': 'Fetching hospitals',
-  'fetchHospitalsSub': 'OpenStreetMap se nearby hospitals load ho rahe hain.',
+  'fetchHospitalsSub': 'Checking hospitals near your GPS.',
   'noHospitals': 'No nearby hospitals found',
   'noHospitalsSub': 'Refresh GPS or try again.',
   'language': 'Language',
@@ -2933,6 +2933,16 @@ class _AppShellState extends State<AppShell> {
   late AppUserProfile _profile = widget.profile;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!appLocation.resolved && !appLocation.loading) {
+        unawaited(appLocation.requestCurrentLocation());
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final pages = [
       HomeScreen(profile: _profile, onLogout: widget.onLogout),
@@ -3475,9 +3485,22 @@ class _ArogyaXScreenState extends State<ArogyaXScreen> {
               top: false,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                child: AppCard(
-                  padding: const EdgeInsets.all(12),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: palette.line),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: .06),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       if (_uploadName.isNotEmpty)
                         Container(
@@ -3518,36 +3541,51 @@ class _ArogyaXScreenState extends State<ArogyaXScreen> {
                         ),
                       Row(
                         children: [
-                          IconButton(
+                          _ComposerIconButton(
                             tooltip: tr('uploadReport'),
-                            onPressed: _busy ? null : () => _pickUpload(false),
-                            icon: const Icon(Icons.upload_file_rounded),
+                            icon: Icons.upload_file_rounded,
+                            onTap: _busy ? null : () => _pickUpload(false),
                           ),
-                          IconButton(
+                          _ComposerIconButton(
                             tooltip: tr('uploadImage'),
-                            onPressed: _busy ? null : () => _pickUpload(true),
-                            icon: const Icon(Icons.image_rounded),
+                            icon: Icons.image_rounded,
+                            onTap: _busy ? null : () => _pickUpload(true),
                           ),
+                          const SizedBox(width: 4),
                           Expanded(
                             child: TextField(
                               controller: _controller,
                               minLines: 1,
-                              maxLines: 4,
+                              maxLines: 2,
+                              textInputAction: TextInputAction.send,
+                              onSubmitted: (_) => _busy ? null : _send(),
+                              style: TextStyle(
+                                color: palette.text,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
                               decoration: InputDecoration(
                                 hintText: tr('askArogyaX'),
                                 filled: true,
-                                fillColor: palette.soft,
+                                isDense: true,
+                                fillColor: Colors.transparent,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 10,
+                                ),
                                 border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(18),
+                                  borderRadius: BorderRadius.circular(999),
                                   borderSide: BorderSide.none,
                                 ),
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          CircleIcon(
-                            icon: Icons.send_rounded,
-                            onTap: _busy ? () {} : _send,
+                          const SizedBox(width: 6),
+                          _ComposerSendButton(
+                            busy: _busy,
+                            onTap: _busy ? null : _send,
                           ),
                         ],
                       ),
@@ -3776,6 +3814,82 @@ class _ArogyaXBubble extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ComposerIconButton extends StatelessWidget {
+  const _ComposerIconButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: Container(
+          width: 38,
+          height: 38,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.blue.withValues(alpha: .08),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: AppColors.blue, size: 20),
+        ),
+      ),
+    );
+  }
+}
+
+class _ComposerSendButton extends StatelessWidget {
+  const _ComposerSendButton({required this.busy, required this.onTap});
+
+  final bool busy;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(999),
+      onTap: onTap,
+      child: Container(
+        width: 42,
+        height: 42,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [AppColors.navy, AppColors.blue],
+          ),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.blue.withValues(alpha: .24),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: busy
+            ? const SizedBox(
+                width: 17,
+                height: 17,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Icon(Icons.arrow_upward_rounded, color: Colors.white),
       ),
     );
   }
@@ -5217,8 +5331,7 @@ class NearbyHospitalsScreen extends StatelessWidget {
                       padding: EdgeInsets.fromLTRB(20, 0, 20, 26),
                       child: LiveHealthLoadingCard(
                         title: 'Fetching hospitals',
-                        subtitle:
-                            'OpenStreetMap se user GPS ke aas-paas hospitals aa rahe hain.',
+                        subtitle: 'Checking hospitals near your GPS.',
                       ),
                     );
                   }
@@ -7345,12 +7458,20 @@ class _AppPageState extends State<AppPage> {
     if (notification is ScrollUpdateNotification) {
       final delta = notification.scrollDelta ?? 0;
       if (delta.abs() > .4) {
-        _scrollMotion.value = delta > 0 ? -1 : 1;
+        final direction = delta > 0 ? -1.0 : 1.0;
+        _scrollMotion.value = direction;
         _settleTimer?.cancel();
-        _settleTimer = Timer(const Duration(milliseconds: 160), () {
+        _settleTimer = Timer(const Duration(milliseconds: 230), () {
           _scrollMotion.value = 0;
         });
       }
+    } else if (notification is OverscrollNotification) {
+      final direction = notification.overscroll > 0 ? -1.0 : 1.0;
+      _scrollMotion.value = direction;
+      _settleTimer?.cancel();
+      _settleTimer = Timer(const Duration(milliseconds: 260), () {
+        _scrollMotion.value = 0;
+      });
     }
     return false;
   }
@@ -10710,11 +10831,17 @@ class AppCard extends StatelessWidget {
       animation: motion,
       child: result,
       builder: (context, child) {
-        return AnimatedSlide(
-          offset: Offset(0, motion.value * .006),
-          duration: const Duration(milliseconds: 140),
+        final strength = motion.value.abs();
+        return AnimatedScale(
+          scale: 1 - strength * .016,
+          duration: const Duration(milliseconds: 190),
           curve: Curves.easeOutCubic,
-          child: child,
+          child: AnimatedSlide(
+            offset: Offset(0, motion.value * .055),
+            duration: const Duration(milliseconds: 190),
+            curve: Curves.easeOutCubic,
+            child: child,
+          ),
         );
       },
     );
