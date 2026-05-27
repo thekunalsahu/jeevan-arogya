@@ -22,7 +22,6 @@ final appLocation = AppLocationController();
 final appData = AppDataController();
 final liveHealthData = LiveHealthDataController();
 final appTheme = AppThemeController();
-final appLanguage = AppLanguageController();
 
 class AppTextEntry {
   const AppTextEntry({
@@ -634,48 +633,6 @@ class AppThemePalette {
   );
 }
 
-enum AppLanguage { english, hindi }
-
-class AppLanguageController extends ChangeNotifier {
-  static const _storageKey = 'jeevan_arogya_language_v1';
-
-  AppLanguage _mode = AppLanguage.english;
-
-  AppLanguage get mode => _mode;
-  bool get isHindi => _mode == AppLanguage.hindi;
-
-  Future<void> load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_storageKey);
-    _mode = AppLanguage.values.firstWhere(
-      (language) => language.name == raw,
-      orElse: () => AppLanguage.english,
-    );
-  }
-
-  Future<void> setMode(AppLanguage mode) async {
-    if (_mode == mode) {
-      return;
-    }
-    _mode = mode;
-    notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_storageKey, mode.name);
-  }
-}
-
-extension AppLanguageLabel on AppLanguage {
-  String get label => switch (this) {
-    AppLanguage.english => 'English',
-    AppLanguage.hindi => 'हिन्दी',
-  };
-
-  String get shortLabel => switch (this) {
-    AppLanguage.english => 'EN',
-    AppLanguage.hindi => 'HI',
-  };
-}
-
 String tr(String key) {
   return _enText[key] ?? key;
 }
@@ -722,264 +679,6 @@ const _enText = {
   'clearUpload': 'Clear upload',
   'assistantIntro':
       'Tell me your health concern. I can read uploaded report images/text and use your nearby doctors, hospitals and medical stores.',
-};
-
-const hiText = {
-  'helpToday': 'आज आपकी कैसे\nमदद करें?',
-  'searchHome': 'डॉक्टर, अस्पताल, सेवाएं खोजें...',
-  'findDoctors': 'डॉक्टर खोजें',
-  'bookAppointments': 'अपॉइंटमेंट बुक करें',
-  'nearbyHospitals': 'नजदीकी अस्पताल',
-  'findHospitalsNear': 'पास के अस्पताल देखें',
-  'emergencyCab': 'इमरजेंसी कैब',
-  'bookCabEmergency': 'आपातकाल में कैब बुक करें',
-  'healthSchemes': 'स्वास्थ्य योजनाएं',
-  'ayushmanMore': 'आयुष्मान भारत और अन्य',
-  'medicalStores': 'मेडिकल स्टोर',
-  'janPharmacies': 'जन औषधि और फार्मेसी',
-  'healthRecords': 'हेल्थ रिकॉर्ड',
-  'medicalInfo': 'आपकी मेडिकल जानकारी',
-  'aiAssistant': 'आरोग्यX',
-  'aiSubtitle': 'AI स्वास्थ्य गाइड',
-  'viewAll': 'सभी देखें',
-  'enableGpsCare': 'नजदीकी देखभाल के लिए GPS चालू करें',
-  'gpsCareSubtitle': 'GPS अनुमति के बाद ही नजदीकी अस्पताल और दूरी दिखाई जाएगी।',
-  'fetchHospitals': 'अस्पताल खोजे जा रहे हैं',
-  'fetchHospitalsSub': 'OpenStreetMap से नजदीकी अस्पताल लोड हो रहे हैं।',
-  'noHospitals': 'नजदीकी अस्पताल नहीं मिले',
-  'noHospitalsSub': 'GPS फिर से रिफ्रेश करें या दोबारा कोशिश करें।',
-  'language': 'भाषा',
-  'arogyaxTitle': 'आरोग्यX असिस्टेंट',
-  'askArogyaX': 'लक्षण, विशेषज्ञ, अस्पताल, दवाई पूछें...',
-  'send': 'भेजें',
-  'uploadReport': 'रिपोर्ट अपलोड',
-  'uploadImage': 'इमेज अपलोड',
-  'clearUpload': 'अपलोड हटाएं',
-  'assistantIntro':
-      'अपनी स्वास्थ्य समस्या बताएं। मैं रिपोर्ट इमेज/टेक्स्ट पढ़कर पास के डॉक्टर, अस्पताल और मेडिकल स्टोर के हिसाब से मदद करूंगा।',
-};
-
-const exactHiText = {
-  'Home': 'होम',
-  'Appointments': 'अपॉइंटमेंट',
-  'Messages': 'मैसेज',
-  'Profile': 'प्रोफाइल',
-  'SOS': 'SOS',
-  'Find Doctors': 'डॉक्टर खोजें',
-  'Search specialists and book appointment slots':
-      'विशेषज्ञ खोजें और अपॉइंटमेंट बुक करें',
-  'Emergency Cab': 'इमरजेंसी कैब',
-  'Request a GPS-based ride to nearest hospital':
-      'नजदीकी अस्पताल तक GPS आधारित राइड',
-  'Nearby Hospitals': 'नजदीकी अस्पताल',
-  'Open live GPS map, call and directions': 'GPS मैप, कॉल और दिशा देखें',
-  'Emergency SOS': 'इमरजेंसी SOS',
-  'Trigger emergency alert and call your priority contact':
-      'इमरजेंसी अलर्ट और प्राथमिक संपर्क को कॉल',
-  'Medical Stores': 'मेडिकल स्टोर',
-  'Find affordable medicine stores near you': 'पास के दवा स्टोर खोजें',
-  'Health Schemes': 'स्वास्थ्य योजनाएं',
-  'PM-JAY, CGHS, ESIC, ABHA and government portals':
-      'PM-JAY, CGHS, ESIC, ABHA और सरकारी पोर्टल',
-  'Health Records': 'हेल्थ रिकॉर्ड',
-  'Prescriptions': 'प्रिस्क्रिप्शन',
-  'Allergies & Conditions': 'एलर्जी और बीमारियां',
-  'Vital Health Info': 'जरूरी स्वास्थ्य जानकारी',
-  'My Health': 'मेरा स्वास्थ्य',
-  'My Account': 'मेरा अकाउंट',
-  'Emergency Contacts': 'इमरजेंसी संपर्क',
-  'Address Book': 'एड्रेस बुक',
-  'Notification Settings': 'नोटिफिकेशन सेटिंग्स',
-  'Help & Support': 'मदद और सपोर्ट',
-  'About Us': 'हमारे बारे में',
-  'Clear Saved Data': 'सेव डेटा मिटाएं',
-  'Logout': 'लॉगआउट',
-  'Edit Profile': 'प्रोफाइल एडिट करें',
-  'Save Profile': 'प्रोफाइल सेव करें',
-  'New Message': 'नया मैसेज',
-  'Send Message': 'मैसेज भेजें',
-  'Search': 'खोजें',
-  'No exact result found': 'सटीक परिणाम नहीं मिला',
-  'You can still open these live services and continue from there.':
-      'आप इन सेवाओं को खोलकर आगे बढ़ सकते हैं।',
-  'Doctors near your area': 'आपके पास डॉक्टर',
-  'Use GPS to personalize doctor availability':
-      'डॉक्टर उपलब्धता के लिए GPS इस्तेमाल करें',
-  'Detecting GPS...': 'GPS खोजा जा रहा है...',
-  'Enable GPS Location': 'GPS लोकेशन चालू करें',
-  'GPS...': 'GPS...',
-  'GPS': 'GPS',
-  'Filter Doctors': 'डॉक्टर फिल्टर करें',
-  'All': 'सभी',
-  'Doctor': 'डॉक्टर',
-  'Cardiologist': 'हृदय रोग विशेषज्ञ',
-  'Orthopedic': 'हड्डी रोग विशेषज्ञ',
-  'General Physician': 'जनरल फिजिशियन',
-  'ENT': 'ENT',
-  'Neurologist': 'न्यूरोलॉजिस्ट',
-  'Dentist': 'डेंटिस्ट',
-  'Pediatrician': 'बाल रोग विशेषज्ञ',
-  'Gynecologist': 'स्त्री रोग विशेषज्ञ',
-  'Dermatologist': 'त्वचा रोग विशेषज्ञ',
-  'Fetching doctors': 'डॉक्टर खोजे जा रहे हैं',
-  'OpenStreetMap se live nearby doctor listings aa rahi hain.':
-      'OpenStreetMap से पास के डॉक्टर लोड हो रहे हैं।',
-  'No verified live doctors found': 'पास में डॉक्टर नहीं मिले',
-  'Try All filter or refresh GPS.': 'सभी फिल्टर चुनें या GPS रिफ्रेश करें।',
-  'Live OpenStreetMap doctor data': 'OpenStreetMap डॉक्टर डेटा',
-  'About Doctor': 'डॉक्टर के बारे में',
-  'Read more': 'और पढ़ें',
-  'Next Available Slots': 'अगले उपलब्ध स्लॉट',
-  'Reason for visit': 'विजिट का कारण',
-  'Book Appointment': 'अपॉइंटमेंट बुक करें',
-  'Consultation Fee': 'कंसल्टेशन फीस',
-  'Available Today': 'आज उपलब्ध',
-  'Location': 'लोकेशन',
-  'Contact for details': 'जानकारी के लिए संपर्क करें',
-  'Call': 'कॉल',
-  'Call to confirm': 'कन्फर्म करने के लिए कॉल करें',
-  'Medical Store': 'मेडिकल स्टोर',
-  'Jan Aushadhi': 'जन औषधि',
-  'Filter Medical Stores': 'मेडिकल स्टोर फिल्टर करें',
-  'All medical stores': 'सभी मेडिकल स्टोर',
-  'Jan Aushadhi only': 'केवल जन औषधि',
-  'No medical store live result found': 'मेडिकल स्टोर नहीं मिला',
-  'OpenStreetMap me nearby medical store listing nahi mili.':
-      'OpenStreetMap में पास की मेडिकल स्टोर लिस्टिंग नहीं मिली।',
-  'Add Health Record': 'हेल्थ रिकॉर्ड जोड़ें',
-  'Report name': 'रिपोर्ट का नाम',
-  'Notes, file link, doctor, date': 'नोट्स, फाइल, डॉक्टर, तारीख',
-  'Save Record': 'रिकॉर्ड सेव करें',
-  'Upload File': 'फाइल अपलोड',
-  'Upload Image': 'इमेज अपलोड',
-  'Save': 'सेव',
-  'Title': 'शीर्षक',
-  'Details': 'जानकारी',
-  'No uploaded health records yet.': 'अभी कोई हेल्थ रिकॉर्ड अपलोड नहीं है।',
-  'ArogyaX thinking': 'ArogyaX सोच रहा है',
-  'Report, location and nearby care context is being checked.':
-      'रिपोर्ट, लोकेशन और पास की स्वास्थ्य जानकारी देखी जा रही है।',
-  'Change theme': 'थीम बदलें',
-  'Light': 'लाइट',
-  'Dark': 'डार्क',
-  '100% Black': '100% ब्लैक',
-  'Notifications': 'नोटिफिकेशन',
-  'No notifications yet': 'अभी कोई नोटिफिकेशन नहीं',
-  'New appointment, SOS and cab updates will appear here after activity.':
-      'अपॉइंटमेंट, SOS और कैब अपडेट गतिविधि के बाद यहां दिखेंगे।',
-  'Enable GPS to find doctors': 'डॉक्टर खोजने के लिए GPS चालू करें',
-  'Doctor availability and nearby appointment details unlock after live GPS permission.':
-      'लाइव GPS अनुमति के बाद डॉक्टर उपलब्धता और पास के स्लॉट दिखेंगे।',
-  'Enable GPS for Medical Stores': 'मेडिकल स्टोर खोजने के लिए GPS चालू करें',
-  'Nearest store list, distance and map are hidden until live GPS permission is allowed.':
-      'लाइव GPS अनुमति मिलने तक नजदीकी स्टोर, दूरी और मैप छिपे रहेंगे।',
-  'Fetching Medical Stores': 'मेडिकल स्टोर खोजे जा रहे हैं',
-  'OpenStreetMap se live pharmacy data load ho raha hai.':
-      'OpenStreetMap से पास की फार्मेसी जानकारी लोड हो रही है।',
-  'No appointments yet': 'अभी कोई अपॉइंटमेंट नहीं',
-  'Book a doctor appointment and it will appear here permanently.':
-      'डॉक्टर अपॉइंटमेंट बुक करें, वह यहां स्थायी रूप से दिखेगा।',
-  'No messages yet': 'अभी कोई मैसेज नहीं',
-  'Start a message or book appointments to create live threads.':
-      'मैसेज शुरू करें या अपॉइंटमेंट बुक करें, थ्रेड यहां दिखेंगे।',
-  'Start Message': 'मैसेज शुरू करें',
-  'New': 'नया',
-  'Confirm Emergency Ride': 'इमरजेंसी राइड कन्फर्म करें',
-  'Pickup Location': 'पिकअप लोकेशन',
-  'Drop Location': 'ड्रॉप लोकेशन',
-  'Ride Type': 'राइड प्रकार',
-  'Payment Method': 'पेमेंट तरीका',
-  'Select ride type': 'राइड प्रकार चुनें',
-  'Select payment': 'पेमेंट चुनें',
-  'Hatchback': 'हैचबैक',
-  'Sedan': 'सेडान',
-  'SUV': 'SUV',
-  'Ambulance': 'एम्बुलेंस',
-  'Cash': 'कैश',
-  'Online': 'ऑनलाइन',
-  'Request Emergency Cab': 'इमरजेंसी कैब रिक्वेस्ट करें',
-  'Requesting cab...': 'कैब रिक्वेस्ट हो रही है...',
-  'Drivers will be notified about the emergency':
-      'ड्राइवरों को इमरजेंसी के बारे में सूचित किया जाएगा',
-  'Cab booking saved': 'कैब बुकिंग सेव हुई',
-  'Cab booking requested': 'कैब बुकिंग रिक्वेस्ट हुई',
-  'Live emergency route': 'लाइव इमरजेंसी रूट',
-  'Hospitals near you': 'आपके पास अस्पताल',
-  'Medical stores near you': 'आपके पास मेडिकल स्टोर',
-  'Directions': 'दिशा',
-  'Call Now': 'अभी कॉल करें',
-  'Finding nearby hospitals': 'पास के अस्पताल खोजे जा रहे हैं',
-  'Fetching live OpenStreetMap results around your GPS.':
-      'आपके GPS के आसपास OpenStreetMap परिणाम लोड हो रहे हैं।',
-  'No live hospital found nearby': 'पास में लाइव अस्पताल नहीं मिला',
-  'Tap GPS again or call emergency services.':
-      'GPS फिर दबाएं या इमरजेंसी सेवा को कॉल करें।',
-  'Enable GPS for emergency cab': 'इमरजेंसी कैब के लिए GPS चालू करें',
-  'Enable GPS for nearby hospitals': 'पास के अस्पतालों के लिए GPS चालू करें',
-  'No verified live hospitals found': 'पास में सत्यापित अस्पताल नहीं मिले',
-  'Refresh GPS and try again.': 'GPS रिफ्रेश करें और फिर कोशिश करें।',
-  'Ayushman Bharat': 'आयुष्मान भारत',
-  'Check Eligibility': 'पात्रता जांचें',
-  'Eligibility': 'पात्रता',
-  'Documents': 'दस्तावेज',
-  'Ayushman Bharat PM-JAY': 'आयुष्मान भारत PM-JAY',
-  'Cashless hospital care up to Rs. 5,00,000':
-      '₹5,00,000 तक कैशलेस अस्पताल इलाज',
-  'Jan Aushadhi Yojana': 'जन औषधि योजना',
-  'Affordable generic medicines': 'सस्ती जेनेरिक दवाइयां',
-  'Central Government Health Scheme': 'केंद्रीय सरकारी स्वास्थ्य योजना',
-  'Employees State Insurance Scheme': 'कर्मचारी राज्य बीमा योजना',
-  'ABHA Health ID': 'ABHA हेल्थ ID',
-  'Digital health account': 'डिजिटल हेल्थ अकाउंट',
-  'Vaccination certificates and services': 'टीकाकरण प्रमाणपत्र और सेवाएं',
-  'Open File': 'फाइल खोलें',
-  'Attachment preview unavailable': 'अटैचमेंट प्रीव्यू उपलब्ध नहीं',
-  'File saved in app data': 'फाइल ऐप डेटा में सेव है',
-  'Clear saved data?': 'सेव डेटा मिटाएं?',
-  'Cancel': 'रद्द करें',
-  'Clear Data': 'डेटा मिटाएं',
-  'Delete entry?': 'एंट्री मिटाएं?',
-  'Delete': 'मिटाएं',
-  'Saving...': 'सेव हो रहा है...',
-  'Other Government Schemes': 'अन्य सरकारी योजनाएं',
-  'Messages, cab requests, doctor appointments and activity notifications saved on this device will be deleted.':
-      'इस डिवाइस पर सेव मैसेज, कैब रिक्वेस्ट, डॉक्टर अपॉइंटमेंट और गतिविधि नोटिफिकेशन मिटा दिए जाएंगे।',
-  'Saved app activity cleared.': 'सेव ऐप गतिविधि मिटा दी गई।',
-  'This saved item and its uploaded attachment will be removed from this device.':
-      'यह सेव आइटम और उसका अपलोडेड अटैचमेंट इस डिवाइस से हट जाएगा।',
-  'Deleted.': 'मिटा दिया गया।',
-  'Add Contact': 'संपर्क जोड़ें',
-  'Name': 'नाम',
-  'Phone number': 'फोन नंबर',
-  'Relation': 'रिश्ता',
-  'Name and phone are required.': 'नाम और फोन नंबर जरूरी हैं।',
-  'Full name': 'पूरा नाम',
-  'Email address': 'ईमेल पता',
-  'Contact number': 'संपर्क नंबर',
-  'Enter a valid name and email.': 'सही नाम और ईमेल दर्ज करें।',
-  'Doctor, hospital, or contact name': 'डॉक्टर, अस्पताल या संपर्क का नाम',
-  'Message': 'मैसेज',
-  'Name and message are required.': 'नाम और मैसेज जरूरी हैं।',
-  'Type a message...': 'मैसेज लिखें...',
-  'Custom message': 'कस्टम मैसेज',
-  'Address or landmark': 'पता या लैंडमार्क',
-  'Using your live location': 'आपकी लाइव लोकेशन इस्तेमाल हो रही है',
-  'Location based care': 'लोकेशन आधारित देखभाल',
-  'Live hospital data will appear after fetch':
-      'फेच होने के बाद लाइव अस्पताल डेटा दिखेगा',
-  'Enable GPS to fetch nearby care': 'पास की देखभाल खोजने के लिए GPS चालू करें',
-  'Locating': 'लोकेशन खोज रहे हैं',
-  'Use GPS': 'GPS इस्तेमाल करें',
-  'Finding live doctors': 'लाइव डॉक्टर खोजे जा रहे हैं',
-  'Nearby doctor listings are loading.':
-      'पास के डॉक्टरों की सूची लोड हो रही है।',
-  'Next doctor available': 'अगला डॉक्टर उपलब्ध',
-  'Jeevan Arogya connects patients to nearby care.':
-      'जीवन आरोग्य मरीजों को पास की स्वास्थ्य सेवा से जोड़ता है।',
-  'Maps use OpenStreetMap tiles.':
-      'मैप में OpenStreetMap टाइल्स इस्तेमाल होती हैं।',
-  'Supabase powers auth and live database features.':
-      'Auth और लाइव डेटाबेस फीचर Supabase से चलते हैं।',
 };
 
 Future<void> main() async {
@@ -1574,7 +1273,8 @@ class AppLocationController extends ChangeNotifier {
     try {
       final enabled = await Geolocator.isLocationServiceEnabled();
       if (!enabled) {
-        _message = 'Location service off hai. Device/browser location on karo.';
+        _message =
+            'Location service is turned off. Turn on device or browser location.';
         return;
       }
 
@@ -1585,7 +1285,7 @@ class AppLocationController extends ChangeNotifier {
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
         _message =
-            'Location permission deny hai. Browser permission allow karo.';
+            'Location permission is denied. Allow location access in your browser.';
         return;
       }
 
@@ -1632,15 +1332,16 @@ String formatDistanceKm(double km) {
 }
 
 bool isLikelyFemaleDoctorName(String name, {String speciality = ''}) {
-  final lower = '$name $speciality'.toLowerCase();
-  if (RegExp(r'\b(mrs|ms|miss|kumari|smt|dr\s+mrs)\b').hasMatch(lower)) {
+  final nameLower = name.toLowerCase();
+  final specialityLower = speciality.toLowerCase();
+  if (RegExp(r'\b(mrs|ms|miss|kumari|smt|dr\s+mrs)\b').hasMatch(nameLower)) {
     return true;
   }
-  if (RegExp(r'\b(mr|shri|sri)\b').hasMatch(lower)) {
+  if (RegExp(r'\b(mr|shri|sri)\b').hasMatch(nameLower)) {
     return false;
   }
 
-  final tokens = lower
+  final tokens = nameLower
       .split(RegExp(r'[^a-z]+'))
       .where((token) => token.length > 1)
       .toSet();
@@ -1663,35 +1364,67 @@ bool isLikelyFemaleDoctorName(String name, {String speciality = ''}) {
     'indore',
   };
   const femaleNames = {
+    'aanchal',
     'aarti',
+    'abha',
+    'abhilasha',
     'aditi',
+    'akanksha',
     'alka',
     'amrita',
     'ananya',
+    'anamika',
     'anjali',
     'ankita',
+    'anita',
+    'anju',
+    'anu',
+    'anupama',
     'aparna',
     'archana',
     'aruna',
+    'arushi',
     'asha',
+    'ayushi',
+    'bharti',
     'bhavna',
+    'chitra',
+    'damini',
     'deepa',
+    'deepali',
     'deepika',
     'deepti',
+    'diksha',
     'divya',
+    'dolly',
     'garima',
+    'gayatri',
     'geeta',
+    'hina',
     'isha',
     'jyoti',
     'kanika',
     'kavita',
+    'kavya',
     'khushboo',
+    'kirti',
+    'komal',
     'kriti',
+    'lata',
+    'laxmi',
     'madhu',
+    'madhuri',
+    'mamta',
     'manisha',
+    'megha',
     'meena',
     'meera',
+    'mohini',
     'monika',
+    'namrata',
+    'nancy',
+    'nandini',
+    'navya',
     'neelam',
     'neha',
     'nidhi',
@@ -1708,13 +1441,20 @@ bool isLikelyFemaleDoctorName(String name, {String speciality = ''}) {
     'priyanka',
     'rachna',
     'radhika',
+    'rajni',
     'rashmi',
     'rekha',
     'renu',
+    'reshma',
+    'riya',
+    'roshni',
+    'rupa',
     'ritu',
     'sakshi',
+    'sanjana',
     'sangeeta',
     'sarika',
+    'sapna',
     'seema',
     'shalini',
     'shikha',
@@ -1729,37 +1469,110 @@ bool isLikelyFemaleDoctorName(String name, {String speciality = ''}) {
     'sonal',
     'sonia',
     'sonika',
+    'soumya',
+    'sujata',
     'sunita',
+    'sushma',
+    'shweta',
     'swati',
     'tanvi',
+    'uma',
+    'usha',
+    'vaishali',
     'vandana',
     'vidya',
   };
   const maleNames = {
+    'aakash',
+    'aarav',
     'abhishek',
+    'abhay',
+    'adarsh',
     'ajay',
+    'akansh',
+    'akash',
+    'akhil',
+    'akshay',
     'amit',
+    'amol',
+    'anand',
+    'anil',
     'ankit',
+    'ankur',
     'arjun',
+    'arpit',
+    'arun',
     'ashish',
+    'ashwin',
+    'atul',
+    'avinash',
+    'bharat',
+    'bhavesh',
+    'chaitanya',
+    'chetan',
     'deepak',
     'dev',
+    'dharmendra',
+    'dinesh',
     'gaurav',
+    'harish',
+    'harsh',
+    'hemant',
+    'jitendra',
+    'kapil',
     'karan',
+    'keshav',
+    'kishore',
+    'krishna',
     'kunal',
+    'lalit',
+    'lokesh',
+    'mahesh',
     'manish',
+    'mayank',
     'mohit',
+    'mukesh',
+    'narendra',
+    'neeraj',
     'nilesh',
+    'pankaj',
+    'pradeep',
+    'prakash',
+    'pranav',
+    'prashant',
+    'prem',
+    'raj',
+    'rajendra',
+    'rajiv',
+    'raju',
     'rahul',
     'rajesh',
     'rakesh',
+    'ranjit',
     'ravi',
+    'ravindra',
     'rohit',
+    'sachin',
+    'sameer',
+    'sandeep',
     'sanjay',
     'saurabh',
+    'satish',
+    'shailesh',
+    'shashank',
+    'shyam',
+    'siddharth',
+    'subhash',
+    'sumit',
+    'sunil',
     'suresh',
+    'tarun',
+    'umesh',
     'vikas',
+    'vinay',
+    'vipin',
     'vivek',
+    'yash',
   };
 
   final nameTokens = tokens.difference(ignoredTokens);
@@ -1770,15 +1583,30 @@ bool isLikelyFemaleDoctorName(String name, {String speciality = ''}) {
     return false;
   }
 
-  return lower.contains('women') ||
-      lower.contains('female') ||
-      lower.contains('lady') ||
-      lower.contains('ladies') ||
-      lower.contains('mahila') ||
-      lower.contains('maternity') ||
-      lower.contains('gynaec') ||
-      lower.contains('gynec') ||
-      lower.contains('obstetric');
+  final womenCareWords =
+      nameLower.contains('women') ||
+      nameLower.contains('female') ||
+      nameLower.contains('lady') ||
+      nameLower.contains('ladies') ||
+      nameLower.contains('mahila') ||
+      nameLower.contains('maternity');
+  if (womenCareWords) {
+    return true;
+  }
+
+  final specialitySuggestsWomenCare =
+      specialityLower.contains('women') ||
+      specialityLower.contains('female') ||
+      specialityLower.contains('maternity') ||
+      specialityLower.contains('gynaec') ||
+      specialityLower.contains('gynec') ||
+      specialityLower.contains('gyno') ||
+      specialityLower.contains('obgyn') ||
+      specialityLower.contains('ob-gyn') ||
+      specialityLower.contains('obstetric');
+  final hasDoctorTitle = RegExp(r'\b(dr|doctor)\b').hasMatch(nameLower);
+  final looksLikeNamedDoctor = hasDoctorTitle && nameTokens.isNotEmpty;
+  return specialitySuggestsWomenCare && !looksLikeNamedDoctor;
 }
 
 String friendlyAuthError(Object error) {
@@ -3906,7 +3734,7 @@ class _ArogyaXScreenState extends State<ArogyaXScreen> {
         _messages.add(
           ArogyaXMessage(
             text:
-                'ArogyaX setup issue: $error\n\nVercel env me GROQ_API_KEY add karke redeploy karo.',
+                'ArogyaX setup issue: $error\n\nAdd GROQ_API_KEY in Vercel environment variables and redeploy.',
             fromUser: false,
           ),
         );
@@ -5019,8 +4847,7 @@ class DoctorDirectoryList extends StatelessWidget {
         if (liveHealthData.loading && liveHealthData.doctors.isEmpty) {
           return const LiveHealthLoadingCard(
             title: 'Fetching doctors',
-            subtitle:
-                'OpenStreetMap se live nearby doctor listings aa rahi hain.',
+            subtitle: 'Loading nearby doctor listings from OpenStreetMap.',
           );
         }
         final filteredDoctors = _filter(
@@ -5070,7 +4897,19 @@ bool doctorMatchesSpecialty(Doctor doctor, String selected) {
     'ent': ['ent', 'ear', 'nose', 'throat'],
     'neurologist': ['neuro', 'brain'],
     'pediatrician': ['paediatric', 'pediatric', 'child'],
-    'gynecologist': ['gyn', 'obstetric', 'women'],
+    'gynecologist': [
+      'gyn',
+      'gynaec',
+      'gynec',
+      'gyno',
+      'gynocalogst',
+      'gynecologst',
+      'obgyn',
+      'ob-gyn',
+      'obstetric',
+      'maternity',
+      'women',
+    ],
     'dermatologist': ['derma', 'skin'],
     'dentist': ['dental', 'dentist'],
   };
@@ -5996,7 +5835,7 @@ class _JanAushadhiScreenState extends State<JanAushadhiScreen> {
                       child: LiveHealthLoadingCard(
                         title: 'Fetching Medical Stores',
                         subtitle:
-                            'OpenStreetMap se live pharmacy data load ho raha hai.',
+                            'Loading live pharmacy data from OpenStreetMap.',
                       ),
                     );
                   }
@@ -6007,7 +5846,7 @@ class _JanAushadhiScreenState extends State<JanAushadhiScreen> {
                         icon: Icons.medication_liquid_rounded,
                         title: 'No medical store live result found',
                         subtitle:
-                            'OpenStreetMap me nearby medical store listing nahi mili.',
+                            'OpenStreetMap did not return nearby medical store listings.',
                       ),
                     );
                   }
@@ -6387,9 +6226,11 @@ class ProfileScreen extends StatelessWidget {
                 builder: (_) => const SimpleInfoScreen(
                   title: 'About Us',
                   lines: [
-                    'Jeevan Arogya connects patients to nearby care.',
-                    'Maps use OpenStreetMap tiles.',
-                    'Supabase powers auth and live database features.',
+                    'Jeevan Arogya is a healthcare companion for finding nearby doctors, hospitals, medicine stores and emergency support from one place.',
+                    'The app uses your GPS permission only to personalize nearby care, map distance, hospital routing and emergency cab suggestions.',
+                    'ArogyaX helps users understand symptoms and uploaded health reports, then guides them toward relevant specialists and nearby care options.',
+                    'Health records, prescriptions, allergies, contacts, appointments and cab requests can be saved on the device for quick access.',
+                    'Authentication and live app data are designed around Supabase, while maps and nearby listings use OpenStreetMap-based services.',
                   ],
                 ),
               ),

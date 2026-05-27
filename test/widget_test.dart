@@ -12,10 +12,38 @@ void main() {
         isLikelyFemaleDoctorName('City Care', speciality: 'Gynaecologist'),
         isTrue,
       );
+      expect(
+        isLikelyFemaleDoctorName('Dr. Manish Jain', speciality: 'Gynecologist'),
+        isFalse,
+      );
+      expect(
+        isLikelyFemaleDoctorName('Dr. Pooja Jain', speciality: 'Gynecologist'),
+        isTrue,
+      );
+      expect(
+        isLikelyFemaleDoctorName('Dr. K K Shah', speciality: 'Gynecologist'),
+        isFalse,
+      );
       expect(isLikelyFemaleDoctorName('Dr. Rohit Verma'), isFalse);
       expect(isLikelyFemaleDoctorName('Dr. Ravi Gupta'), isFalse);
     },
   );
+
+  test('gynecologist specialty filter handles common spelling variants', () {
+    const doctor = Doctor(
+      name: 'Dr. Pooja Jain',
+      specialty: 'Gynaecology and Obstetrics',
+      experience: '10 years',
+      degree: 'MBBS, MS',
+      fee: 'Call',
+      rating: '4.8',
+      reviews: '120',
+      nextSlot: 'Today',
+      color: Colors.white,
+    );
+
+    expect(doctorMatchesSpecialty(doctor, 'Gynecologist'), isTrue);
+  });
 
   testWidgets('Jeevan Arogya landing shows OTP login fields', (tester) async {
     await tester.pumpWidget(const JeevanArogyaApp());
