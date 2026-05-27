@@ -7677,23 +7677,23 @@ class ArogyaXLogoMark extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      padding: EdgeInsets.all(size * .04),
+      padding: EdgeInsets.all(size * .02),
       decoration: BoxDecoration(
-        color: Colors.black,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(size * .28),
         boxShadow: [
           BoxShadow(
-            color: AppColors.blue.withValues(alpha: .25),
-            blurRadius: size * .32,
-            offset: Offset(0, size * .12),
+            color: AppColors.green.withValues(alpha: .14),
+            blurRadius: size * .22,
+            offset: Offset(0, size * .08),
           ),
         ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(size * .22),
         child: Image.asset(
-          'assets/branding/arogyax_logo.jpeg',
-          fit: BoxFit.cover,
+          'assets/branding/arogyax_logo.png',
+          fit: BoxFit.contain,
           semanticLabel: 'ArogyaX',
         ),
       ),
@@ -8417,99 +8417,121 @@ class DoctorCard extends StatelessWidget {
     final palette = AppThemePalette.current;
     return AppCard(
       onTap: onTap,
-      margin: const EdgeInsets.only(bottom: 14),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Column(
-            children: [
-              DoctorAvatar(doctor: doctor, radius: 35),
-              const SizedBox(height: 10),
-              Text(
-                doctor.fee,
-                style: const TextStyle(fontWeight: FontWeight.w900),
-              ),
-            ],
-          ),
-          const SizedBox(width: 14),
-          Expanded(
+          SizedBox(
+            width: 68,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        doctor.name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ),
-                    const Icon(
-                      Icons.favorite_border_rounded,
-                      color: AppColors.muted,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 5),
+                DoctorAvatar(doctor: doctor, radius: 31),
+                const SizedBox(height: 8),
                 Text(
-                  doctor.specialty,
-                  style: TextStyle(
-                    color: palette.text,
+                  doctor.fee,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
                     fontSize: 12,
-                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 7),
-                Text(
-                  '${doctor.experience}  -  ${doctor.degree}',
-                  style: TextStyle(color: palette.muted, fontSize: 12),
-                ),
-                const SizedBox(height: 11),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: RatingLine(
-                          rating: doctor.rating,
-                          reviews: doctor.reviews,
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 88),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          doctor.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          const Text(
-                            'Next available',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: AppColors.green,
-                              fontSize: 10,
-                            ),
-                          ),
-                          Text(
-                            doctor.nextSlot,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.green,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
+                      const SizedBox(width: 8),
+                      const Icon(
+                        Icons.favorite_border_rounded,
+                        color: AppColors.muted,
+                        size: 20,
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    doctor.specialty,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: palette.text,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    '${doctor.experience}  -  ${doctor.degree}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: palette.muted, fontSize: 11),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: RatingLine(
+                            rating: doctor.rating,
+                            reviews: doctor.reviews,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            const Text(
+                              'Next available',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: AppColors.green,
+                                fontSize: 10,
+                              ),
+                            ),
+                            Text(
+                              doctor.nextSlot,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.right,
+                              style: const TextStyle(
+                                color: AppColors.green,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -8518,325 +8540,45 @@ class DoctorCard extends StatelessWidget {
   }
 }
 
-class DoctorAvatar extends StatefulWidget {
+class DoctorAvatar extends StatelessWidget {
   const DoctorAvatar({super.key, required this.doctor, this.radius = 34});
 
   final Doctor doctor;
   final double radius;
 
   @override
-  State<DoctorAvatar> createState() => _DoctorAvatarState();
-}
-
-class _DoctorAvatarState extends State<DoctorAvatar>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2600),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final female = isLikelyFemaleDoctorName(widget.doctor.name);
-    return SizedBox(
-      width: widget.radius * 2,
-      height: widget.radius * 2,
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, _) {
-          return CustomPaint(
-            painter: DoctorPortraitPainter(
-              progress: _controller.value,
-              female: female,
-              background: widget.doctor.color,
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class DoctorPortraitPainter extends CustomPainter {
-  const DoctorPortraitPainter({
-    required this.progress,
-    required this.female,
-    required this.background,
-  });
-
-  final double progress;
-  final bool female;
-  final Color background;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final c = size.center(Offset.zero);
-    final r = size.shortestSide / 2;
-    final pulse = math.sin(progress * math.pi * 2);
-    final bob = pulse * r * .018;
-
-    canvas.drawCircle(
-      c,
-      r,
-      Paint()
-        ..shader = ui.Gradient.linear(
-          Offset(c.dx - r, c.dy - r),
-          Offset(c.dx + r, c.dy + r),
-          [
-            Color.lerp(background, Colors.white, .18)!,
-            const Color(0xFFEAF7FF),
-            Colors.white,
-          ],
+    final female = isLikelyFemaleDoctorName(doctor.name);
+    final asset = female
+        ? 'assets/branding/doctor_female.jpeg'
+        : 'assets/branding/doctor_male.jpeg';
+    final size = radius * 2;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white,
+        border: Border.all(
+          color: Colors.white,
+          width: math.max(2, radius * .05),
         ),
-    );
-    canvas.drawCircle(
-      c,
-      r * (.84 + progress * .035),
-      Paint()
-        ..color = AppColors.blue.withValues(alpha: .16)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = r * .035,
-    );
-    canvas.drawCircle(
-      c,
-      r * .985,
-      Paint()
-        ..shader = ui.Gradient.sweep(c, [
-          AppColors.blue.withValues(alpha: .9),
-          AppColors.green.withValues(alpha: .78),
-          AppColors.blue.withValues(alpha: .9),
-        ])
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = r * .04,
-    );
-
-    final skin = Paint()
-      ..shader = ui.Gradient.linear(
-        Offset(c.dx - r * .35, c.dy - r * .6),
-        Offset(c.dx + r * .35, c.dy + r * .25),
-        const [Color(0xFFFFE1C7), Color(0xFFE8AA86)],
-      );
-    final hair = Paint()
-      ..color = female ? const Color(0xFF302019) : const Color(0xFF111827);
-    final coat = Paint()..color = Colors.white;
-    final navy = Paint()..color = AppColors.navy;
-
-    final bodyTop = c.dy + r * .16 + bob;
-    final shoulders = RRect.fromRectAndRadius(
-      Rect.fromLTWH(c.dx - r * .62, bodyTop, r * 1.24, r * .68),
-      Radius.circular(r * .22),
-    );
-    canvas.drawRRect(
-      shoulders,
-      Paint()
-        ..shader = ui.Gradient.linear(
-          Offset(c.dx - r * .65, bodyTop),
-          Offset(c.dx + r * .65, bodyTop + r * .7),
-          const [Color(0xFFF8FBFF), Color(0xFFE8F1FB)],
-        ),
-    );
-    canvas.drawLine(
-      Offset(c.dx, bodyTop + r * .05),
-      Offset(c.dx, bodyTop + r * .63),
-      Paint()
-        ..color = const Color(0xFFD7E4F2)
-        ..strokeWidth = r * .028,
-    );
-    final leftCollar = ui.Path()
-      ..moveTo(c.dx - r * .05, bodyTop + r * .04)
-      ..lineTo(c.dx - r * .34, bodyTop + r * .17)
-      ..lineTo(c.dx - r * .12, bodyTop + r * .42)
-      ..close();
-    final rightCollar = ui.Path()
-      ..moveTo(c.dx + r * .05, bodyTop + r * .04)
-      ..lineTo(c.dx + r * .34, bodyTop + r * .17)
-      ..lineTo(c.dx + r * .12, bodyTop + r * .42)
-      ..close();
-    canvas.drawPath(leftCollar, coat);
-    canvas.drawPath(rightCollar, coat);
-    canvas.drawCircle(
-      Offset(c.dx - r * .23, bodyTop + r * .34),
-      r * .035,
-      Paint()..color = AppColors.blue,
-    );
-    canvas.drawLine(
-      Offset(c.dx + r * .18, bodyTop + r * .18),
-      Offset(c.dx + r * .31, bodyTop + r * .37),
-      Paint()
-        ..color = AppColors.blue
-        ..strokeWidth = r * .035
-        ..strokeCap = StrokeCap.round,
-    );
-    canvas.drawCircle(
-      Offset(c.dx + r * .33, bodyTop + r * .41),
-      r * .052,
-      Paint()..color = const Color(0xFF0F766E),
-    );
-
-    final neck = RRect.fromRectAndRadius(
-      Rect.fromCenter(
-        center: Offset(c.dx, c.dy + r * .09 + bob),
-        width: r * .28,
-        height: r * .28,
-      ),
-      Radius.circular(r * .08),
-    );
-    canvas.drawRRect(neck, skin);
-
-    final headCenter = Offset(c.dx, c.dy - r * .18 + bob);
-    if (female) {
-      final hairShape = ui.Path()
-        ..moveTo(c.dx - r * .46, c.dy - r * .15 + bob)
-        ..quadraticBezierTo(
-          c.dx - r * .43,
-          c.dy - r * .62 + bob,
-          c.dx,
-          c.dy - r * .66 + bob,
-        )
-        ..quadraticBezierTo(
-          c.dx + r * .43,
-          c.dy - r * .62 + bob,
-          c.dx + r * .46,
-          c.dy - r * .14 + bob,
-        )
-        ..quadraticBezierTo(
-          c.dx + r * .48,
-          c.dy + r * .18 + bob,
-          c.dx + r * .19,
-          c.dy + r * .27 + bob,
-        )
-        ..lineTo(c.dx - r * .19, c.dy + r * .27 + bob)
-        ..quadraticBezierTo(
-          c.dx - r * .48,
-          c.dy + r * .18 + bob,
-          c.dx - r * .46,
-          c.dy - r * .15 + bob,
-        )
-        ..close();
-      canvas.drawPath(hairShape, hair);
-    } else {
-      final hairShape = ui.Path()
-        ..moveTo(c.dx - r * .38, c.dy - r * .34 + bob)
-        ..quadraticBezierTo(
-          c.dx - r * .28,
-          c.dy - r * .66 + bob,
-          c.dx + r * .18,
-          c.dy - r * .55 + bob,
-        )
-        ..quadraticBezierTo(
-          c.dx + r * .44,
-          c.dy - r * .47 + bob,
-          c.dx + r * .35,
-          c.dy - r * .21 + bob,
-        )
-        ..quadraticBezierTo(
-          c.dx + r * .05,
-          c.dy - r * .36 + bob,
-          c.dx - r * .38,
-          c.dy - r * .20 + bob,
-        )
-        ..close();
-      canvas.drawPath(hairShape, hair);
-    }
-    canvas.drawOval(
-      Rect.fromCenter(center: headCenter, width: r * .68, height: r * .78),
-      skin,
-    );
-
-    final eyeY = headCenter.dy - r * .03;
-    for (final dx in [-r * .12, r * .12]) {
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromCenter(
-            center: Offset(c.dx + dx, eyeY),
-            width: r * .08,
-            height: r * .035,
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.navy.withValues(alpha: .10),
+            blurRadius: radius * .28,
+            offset: Offset(0, radius * .08),
           ),
-          Radius.circular(r * .02),
-        ),
-        navy,
-      );
-    }
-    canvas.drawLine(
-      Offset(c.dx - r * .19, eyeY - r * .09),
-      Offset(c.dx - r * .07, eyeY - r * .11),
-      Paint()
-        ..color = AppColors.navy.withValues(alpha: .55)
-        ..strokeWidth = r * .018
-        ..strokeCap = StrokeCap.round,
-    );
-    canvas.drawLine(
-      Offset(c.dx + r * .07, eyeY - r * .11),
-      Offset(c.dx + r * .19, eyeY - r * .09),
-      Paint()
-        ..color = AppColors.navy.withValues(alpha: .55)
-        ..strokeWidth = r * .018
-        ..strokeCap = StrokeCap.round,
-    );
-    canvas.drawLine(
-      Offset(c.dx, headCenter.dy + r * .01),
-      Offset(c.dx - r * .025, headCenter.dy + r * .08),
-      Paint()
-        ..color = const Color(0xFFC98262).withValues(alpha: .62)
-        ..strokeWidth = r * .018
-        ..strokeCap = StrokeCap.round,
-    );
-    final smile = ui.Path()
-      ..moveTo(c.dx - r * .13, headCenter.dy + r * .17)
-      ..quadraticBezierTo(
-        c.dx,
-        headCenter.dy + r * (.22 + pulse * .004),
-        c.dx + r * .13,
-        headCenter.dy + r * .17,
-      );
-    canvas.drawPath(
-      smile,
-      Paint()
-        ..color = const Color(0xFF9F5C4B).withValues(alpha: .74)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = r * .026
-        ..strokeCap = StrokeCap.round,
-    );
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(c.dx, headCenter.dy + r * .32),
-        width: r * .42,
-        height: r * .08,
+        ],
       ),
-      Paint()..color = Colors.black.withValues(alpha: .055),
-    );
-    canvas.drawCircle(
-      c,
-      r,
-      Paint()
-        ..shader = ui.Gradient.radial(
-          Offset(c.dx - r * .26, c.dy - r * .42),
-          r * .48,
-          [
-            Colors.white.withValues(alpha: .38),
-            Colors.white.withValues(alpha: 0),
-          ],
+      child: ClipOval(
+        child: Image.asset(
+          asset,
+          fit: BoxFit.cover,
+          semanticLabel: female ? 'Female doctor' : 'Male doctor',
         ),
+      ),
     );
-  }
-
-  @override
-  bool shouldRepaint(covariant DoctorPortraitPainter oldDelegate) {
-    return oldDelegate.progress != progress ||
-        oldDelegate.female != female ||
-        oldDelegate.background != background;
   }
 }
 

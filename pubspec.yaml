@@ -68,7 +68,9 @@ flutter:
 
   assets:
     - assets/branding/jeevan_arogya_logo.png
-    - assets/branding/arogyax_logo.jpeg
+    - assets/branding/arogyax_logo.png
+    - assets/branding/doctor_male.jpeg
+    - assets/branding/doctor_female.jpeg
 
   # To add assets to your application, add an assets section, like this:
   # assets:
