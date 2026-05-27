@@ -919,8 +919,7 @@ class LiveHealthDataController extends ChangeNotifier {
     String query,
   ) async {
     final errors = <String>[];
-    final proxy = _healthPlacesProxyUri(center);
-    if (proxy != null) {
+    for (final proxy in _healthPlacesProxyUris(center)) {
       try {
         final response = await http
             .get(proxy, headers: {'Accept': 'application/json'})
@@ -929,10 +928,10 @@ class LiveHealthDataController extends ChangeNotifier {
           return _decodeHealthJson(response.body, 'health proxy');
         }
         errors.add(
-          'health proxy ${response.statusCode}: ${_shortBody(response.body)}',
+          '${proxy.host} ${response.statusCode}: ${_shortBody(response.body)}',
         );
       } catch (error) {
-        errors.add('health proxy: $error');
+        errors.add('${proxy.host}: $error');
       }
     }
 
@@ -951,7 +950,7 @@ class LiveHealthDataController extends ChangeNotifier {
               },
               body: query,
             )
-            .timeout(const Duration(seconds: 35));
+            .timeout(const Duration(seconds: 16));
         if (response.statusCode >= 200 && response.statusCode < 300) {
           return _decodeHealthJson(response.body, endpoint);
         }
@@ -966,21 +965,50 @@ class LiveHealthDataController extends ChangeNotifier {
     throw StateError(errors.join(' | '));
   }
 
-  Uri? _healthPlacesProxyUri(LatLng center) {
+  List<Uri> _healthPlacesProxyUris(LatLng center) {
     final base = Uri.base;
     if (base.scheme != 'http' && base.scheme != 'https') {
-      return null;
+      return const [];
     }
-    return Uri(
-      scheme: base.scheme,
-      host: base.host,
-      port: base.hasPort ? base.port : null,
-      path: '/api/health_places',
-      queryParameters: {
-        'lat': center.latitude.toStringAsFixed(6),
-        'lng': center.longitude.toStringAsFixed(6),
-      },
-    );
+    final query = {
+      'lat': center.latitude.toStringAsFixed(6),
+      'lng': center.longitude.toStringAsFixed(6),
+      'radius': '25000',
+    };
+    final uris = <Uri>[
+      Uri(
+        scheme: base.scheme,
+        host: base.host,
+        port: base.hasPort ? base.port : null,
+        path: '/api/health_places',
+        queryParameters: query,
+      ),
+    ];
+    final isLocalHost =
+        base.host == '127.0.0.1' ||
+        base.host == 'localhost' ||
+        base.host == '::1';
+    if (isLocalHost) {
+      uris.add(
+        Uri(
+          scheme: 'http',
+          host: '127.0.0.1',
+          port: 8787,
+          path: '/api/health_places',
+          queryParameters: query,
+        ),
+      );
+    }
+    return uris;
+  }
+
+  String _healthJsonError(Map<String, dynamic> map, String source) {
+    final stage = map['stage']?.toString();
+    final error = map['error']?.toString();
+    if (error == null || error.isEmpty) {
+      return '$source response missing places';
+    }
+    return stage == null || stage.isEmpty ? error : '$stage: $error';
   }
 
   Map<String, dynamic> _decodeHealthJson(String body, String source) {
@@ -994,7 +1022,7 @@ class LiveHealthDataController extends ChangeNotifier {
     }
     final map = decoded.cast<String, dynamic>();
     if (map['elements'] is! List) {
-      throw FormatException('$source response missing places');
+      throw FormatException(_healthJsonError(map, source));
     }
     return map;
   }
@@ -1081,16 +1109,32 @@ out center 1500;
       }
       final amenity = tags['amenity']?.toString().toLowerCase() ?? '';
       final healthcare = tags['healthcare']?.toString().toLowerCase() ?? '';
+      final shop = tags['shop']?.toString().toLowerCase() ?? '';
+      final specialityTag =
+          tags['healthcare:speciality']?.toString().toLowerCase() ?? '';
       final lowerName = name.toLowerCase();
       final phone = _cleanName(
         tags['phone'] ?? tags['contact:phone'] ?? tags['mobile'],
       );
       final address = _addressFromTags(tags);
       final openingHours = _cleanName(tags['opening_hours']);
+      final sourceName = _cleanName(tags['source']);
 
       final isHospital = amenity == 'hospital' || healthcare == 'hospital';
-      final isDoctor = amenity == 'doctors' || healthcare == 'doctor';
-      final isPharmacy = amenity == 'pharmacy' || healthcare == 'pharmacy';
+      final isClinic = amenity == 'clinic' || healthcare == 'clinic';
+      final isDoctor =
+          amenity == 'doctors' ||
+          healthcare == 'doctor' ||
+          (isClinic &&
+              (specialityTag.isNotEmpty ||
+                  lowerName.contains('dr ') ||
+                  lowerName.startsWith('dr.') ||
+                  lowerName.contains('doctor')));
+      final isPharmacy =
+          amenity == 'pharmacy' ||
+          healthcare == 'pharmacy' ||
+          shop == 'chemist' ||
+          shop == 'pharmacy';
       final isJanAushadhi =
           lowerName.contains('jan aushadhi') ||
           lowerName.contains('janaushadhi') ||
@@ -1104,7 +1148,11 @@ out center 1500;
             Hospital(
               name,
               formatDistanceKm(distanceKm(center, point)),
-              openingHours.contains('24/7') ? '24x7 Open' : 'OpenStreetMap',
+              openingHours.contains('24/7')
+                  ? '24x7 Open'
+                  : sourceName == 'Nominatim'
+                  ? 'OpenStreetMap Search'
+                  : 'OpenStreetMap',
               latitude: point.latitude,
               longitude: point.longitude,
               phone: phone.isEmpty ? '108' : phone,
@@ -1139,7 +1187,9 @@ out center 1500;
                   : const Color(0xFFE7F4FF),
               latitude: point.latitude,
               longitude: point.longitude,
-              source: 'OpenStreetMap',
+              source: sourceName == 'Nominatim'
+                  ? 'OpenStreetMap Search'
+                  : 'OpenStreetMap',
               phone: phone,
               address: address,
               about: about,
