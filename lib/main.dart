@@ -1408,7 +1408,7 @@ out center 1500;
               openingHours.contains('24/7') ? '24x7 Open' : 'OpenStreetMap',
               latitude: point.latitude,
               longitude: point.longitude,
-              phone: phone.isEmpty ? '+91108' : phone,
+              phone: phone.isEmpty ? '108' : phone,
             ),
           );
         }
@@ -1435,7 +1435,7 @@ out center 1500;
               rating: 'Live',
               reviews: 'OSM',
               nextSlot: 'Call to confirm',
-              color: isLikelyFemaleDoctorName(name)
+              color: isLikelyFemaleDoctorName(name, speciality: speciality)
                   ? const Color(0xFFFFEFF8)
                   : const Color(0xFFE7F4FF),
               latitude: point.latitude,
@@ -1461,7 +1461,7 @@ out center 1500;
               area.isEmpty ? storeType : '$storeType - $area',
               latitude: point.latitude,
               longitude: point.longitude,
-              phone: phone.isEmpty ? '+91108' : phone,
+              phone: phone.isEmpty ? '108' : phone,
             ),
           );
         }
@@ -1631,25 +1631,154 @@ String formatDistanceKm(double km) {
   return '${km.toStringAsFixed(1)} km away';
 }
 
-bool isLikelyFemaleDoctorName(String name) {
-  final lower = name.toLowerCase();
-  const femaleMarkers = [
+bool isLikelyFemaleDoctorName(String name, {String speciality = ''}) {
+  final lower = '$name $speciality'.toLowerCase();
+  if (RegExp(r'\b(mrs|ms|miss|kumari|smt|dr\s+mrs)\b').hasMatch(lower)) {
+    return true;
+  }
+  if (RegExp(r'\b(mr|shri|sri)\b').hasMatch(lower)) {
+    return false;
+  }
+
+  final tokens = lower
+      .split(RegExp(r'[^a-z]+'))
+      .where((token) => token.length > 1)
+      .toSet();
+  const ignoredTokens = {
+    'dr',
+    'doctor',
+    'clinic',
+    'hospital',
+    'centre',
+    'center',
+    'care',
+    'health',
+    'medical',
+    'dental',
+    'skin',
+    'eye',
+    'child',
+    'maternity',
+    'women',
+    'indore',
+  };
+  const femaleNames = {
+    'aarti',
+    'aditi',
+    'alka',
+    'amrita',
     'ananya',
-    'neha',
-    'ritu',
+    'anjali',
+    'ankita',
+    'aparna',
+    'archana',
+    'aruna',
+    'asha',
+    'bhavna',
+    'deepa',
+    'deepika',
+    'deepti',
+    'divya',
+    'garima',
+    'geeta',
+    'isha',
+    'jyoti',
+    'kanika',
+    'kavita',
+    'khushboo',
+    'kriti',
+    'madhu',
+    'manisha',
+    'meena',
     'meera',
-    'priyanka',
-    'priya',
+    'monika',
+    'neelam',
+    'neha',
+    'nidhi',
+    'nikita',
+    'nisha',
+    'pallavi',
     'pooja',
+    'poonam',
+    'pragya',
+    'pratibha',
+    'preeti',
+    'prerna',
+    'priya',
+    'priyanka',
+    'rachna',
+    'radhika',
+    'rashmi',
+    'rekha',
+    'renu',
+    'ritu',
+    'sakshi',
+    'sangeeta',
+    'sarika',
+    'seema',
+    'shalini',
+    'shikha',
+    'shilpa',
+    'shivani',
+    'shraddha',
     'shreya',
-    'swati',
+    'shruti',
+    'simran',
+    'smita',
+    'sneha',
     'sonal',
     'sonia',
-    'mrs',
-    'ms.',
-    'dr. mrs',
-  ];
-  return femaleMarkers.any(lower.contains);
+    'sonika',
+    'sunita',
+    'swati',
+    'tanvi',
+    'vandana',
+    'vidya',
+  };
+  const maleNames = {
+    'abhishek',
+    'ajay',
+    'amit',
+    'ankit',
+    'arjun',
+    'ashish',
+    'deepak',
+    'dev',
+    'gaurav',
+    'karan',
+    'kunal',
+    'manish',
+    'mohit',
+    'nilesh',
+    'rahul',
+    'rajesh',
+    'rakesh',
+    'ravi',
+    'rohit',
+    'sanjay',
+    'saurabh',
+    'suresh',
+    'vikas',
+    'vivek',
+  };
+
+  final nameTokens = tokens.difference(ignoredTokens);
+  if (nameTokens.any(femaleNames.contains)) {
+    return true;
+  }
+  if (nameTokens.any(maleNames.contains)) {
+    return false;
+  }
+
+  return lower.contains('women') ||
+      lower.contains('female') ||
+      lower.contains('lady') ||
+      lower.contains('ladies') ||
+      lower.contains('mahila') ||
+      lower.contains('maternity') ||
+      lower.contains('gynaec') ||
+      lower.contains('gynec') ||
+      lower.contains('obstetric');
 }
 
 String friendlyAuthError(Object error) {
@@ -6247,7 +6376,7 @@ class ProfileScreen extends StatelessWidget {
           ProfileMenuItem(
             icon: Icons.help_outline_rounded,
             title: 'Help & Support',
-            onTap: () => callPhone(context, '+91108'),
+            onTap: () => callPhone(context, '108'),
           ),
           ProfileMenuItem(
             icon: Icons.info_outline_rounded,
@@ -8548,7 +8677,10 @@ class DoctorAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final female = isLikelyFemaleDoctorName(doctor.name);
+    final female = isLikelyFemaleDoctorName(
+      doctor.name,
+      speciality: doctor.specialty,
+    );
     final asset = female
         ? 'assets/branding/doctor_female.jpeg'
         : 'assets/branding/doctor_male.jpeg';

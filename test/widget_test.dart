@@ -3,6 +3,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gravitymeet/main.dart';
 
 void main() {
+  test(
+    'doctor gender image detection handles common names and specialties',
+    () {
+      expect(isLikelyFemaleDoctorName('Dr. Nidhi Jain'), isTrue);
+      expect(isLikelyFemaleDoctorName('Dr. Seema Sharma'), isTrue);
+      expect(
+        isLikelyFemaleDoctorName('City Care', speciality: 'Gynaecologist'),
+        isTrue,
+      );
+      expect(isLikelyFemaleDoctorName('Dr. Rohit Verma'), isFalse);
+      expect(isLikelyFemaleDoctorName('Dr. Ravi Gupta'), isFalse);
+    },
+  );
+
   testWidgets('Jeevan Arogya landing shows OTP login fields', (tester) async {
     await tester.pumpWidget(const JeevanArogyaApp());
 
