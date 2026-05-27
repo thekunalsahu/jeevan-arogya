@@ -3270,28 +3270,7 @@ class ArogyaXHomeCard extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       child: Row(
         children: [
-          Container(
-            width: 54,
-            height: 54,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF8B5CF6), AppColors.blue],
-              ),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF8B5CF6).withValues(alpha: .28),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: const Icon(
-              Icons.psychology_alt_rounded,
-              color: Colors.white,
-              size: 28,
-            ),
-          ),
+          const ArogyaXLogoMark(size: 58),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -3355,6 +3334,7 @@ class _ArogyaXScreenState extends State<ArogyaXScreen> {
   String _uploadMime = '';
   String _uploadData = '';
   String _uploadText = '';
+  Uint8List _uploadBytes = Uint8List(0);
   int _uploadSize = 0;
 
   @override
@@ -3385,30 +3365,7 @@ class _ArogyaXScreenState extends State<ArogyaXScreen> {
                       children: [
                         Row(
                           children: [
-                            Container(
-                              width: 52,
-                              height: 52,
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFF8B5CF6), AppColors.blue],
-                                ),
-                                borderRadius: BorderRadius.circular(18),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(
-                                      0xFF8B5CF6,
-                                    ).withValues(alpha: .22),
-                                    blurRadius: 18,
-                                    offset: const Offset(0, 8),
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.psychology_alt_rounded,
-                                color: Colors.white,
-                                size: 29,
-                              ),
-                            ),
+                            const ArogyaXLogoMark(size: 62),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
@@ -3505,21 +3462,20 @@ class _ArogyaXScreenState extends State<ArogyaXScreen> {
                       if (_uploadName.isNotEmpty)
                         Container(
                           margin: const EdgeInsets.only(bottom: 10),
-                          padding: const EdgeInsets.all(10),
+                          padding: const EdgeInsets.fromLTRB(10, 8, 6, 8),
                           decoration: BoxDecoration(
                             color: AppColors.blue.withValues(alpha: .08),
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(18),
                             border: Border.all(
                               color: AppColors.blue.withValues(alpha: .18),
                             ),
                           ),
                           child: Row(
                             children: [
-                              Icon(
-                                _uploadMime.startsWith('image/')
-                                    ? Icons.image_rounded
-                                    : Icons.insert_drive_file_rounded,
-                                color: AppColors.blue,
+                              _UploadPreviewThumb(
+                                name: _uploadName,
+                                mime: _uploadMime,
+                                bytes: _uploadBytes,
                               ),
                               const SizedBox(width: 8),
                               Expanded(
@@ -3532,9 +3488,21 @@ class _ArogyaXScreenState extends State<ArogyaXScreen> {
                                   ),
                                 ),
                               ),
-                              TextButton(
+                              IconButton(
+                                tooltip: 'View upload',
+                                onPressed: _showUploadPreview,
+                                icon: const Icon(
+                                  Icons.visibility_rounded,
+                                  color: AppColors.blue,
+                                ),
+                              ),
+                              IconButton(
+                                tooltip: 'Delete upload',
                                 onPressed: _clearUpload,
-                                child: Text(tr('clearUpload')),
+                                icon: const Icon(
+                                  Icons.delete_outline_rounded,
+                                  color: AppColors.red,
+                                ),
                               ),
                             ],
                           ),
@@ -3623,6 +3591,7 @@ class _ArogyaXScreenState extends State<ArogyaXScreen> {
       _uploadName = file.name;
       _uploadMime = mime;
       _uploadSize = bytes.length;
+      _uploadBytes = Uint8List.fromList(bytes);
       _uploadText = _isTextMime(mime, file.name)
           ? utf8.decode(bytes, allowMalformed: true)
           : '';
@@ -3641,6 +3610,124 @@ class _ArogyaXScreenState extends State<ArogyaXScreen> {
 
   void _clearUpload() {
     setState(_clearUploadState);
+  }
+
+  void _showUploadPreview() {
+    if (_uploadName.isEmpty) return;
+    final palette = AppThemePalette.current;
+    final isImage = _uploadMime.startsWith('image/') && _uploadBytes.isNotEmpty;
+    final isText = _uploadText.trim().isNotEmpty;
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          insetPadding: const EdgeInsets.all(18),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720, maxHeight: 720),
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      _UploadPreviewThumb(
+                        name: _uploadName,
+                        mime: _uploadMime,
+                        bytes: _uploadBytes,
+                        size: 44,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _uploadName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: palette.text,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              '${formatBytes(_uploadSize)}  -  ${_uploadMime.isEmpty ? 'file' : _uploadMime}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: palette.muted,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Delete upload',
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _clearUpload();
+                        },
+                        icon: const Icon(
+                          Icons.delete_outline_rounded,
+                          color: AppColors.red,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Close',
+                        onPressed: () => Navigator.pop(context),
+                        icon: Icon(Icons.close_rounded, color: palette.text),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Flexible(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        width: double.infinity,
+                        color: palette.soft,
+                        child: isImage
+                            ? InteractiveViewer(
+                                minScale: .7,
+                                maxScale: 4,
+                                child: Image.memory(
+                                  _uploadBytes,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      const _UnsupportedUploadPreview(),
+                                ),
+                              )
+                            : isText
+                            ? SingleChildScrollView(
+                                padding: const EdgeInsets.all(14),
+                                child: SelectableText(
+                                  _uploadText,
+                                  style: TextStyle(
+                                    color: palette.text,
+                                    height: 1.45,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              )
+                            : const _UnsupportedUploadPreview(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _send() async {
@@ -3707,6 +3794,7 @@ class _ArogyaXScreenState extends State<ArogyaXScreen> {
     _uploadMime = '';
     _uploadData = '';
     _uploadText = '';
+    _uploadBytes = Uint8List(0);
     _uploadSize = 0;
   }
 
@@ -3890,6 +3978,94 @@ class _ComposerSendButton extends StatelessWidget {
                 ),
               )
             : const Icon(Icons.arrow_upward_rounded, color: Colors.white),
+      ),
+    );
+  }
+}
+
+class _UploadPreviewThumb extends StatelessWidget {
+  const _UploadPreviewThumb({
+    required this.name,
+    required this.mime,
+    required this.bytes,
+    this.size = 34,
+  });
+
+  final String name;
+  final String mime;
+  final Uint8List bytes;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final isImage = mime.startsWith('image/') && bytes.isNotEmpty;
+    if (isImage) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(size * .28),
+        child: Image.memory(
+          bytes,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => _fileIcon(),
+        ),
+      );
+    }
+    return _fileIcon();
+  }
+
+  Widget _fileIcon() {
+    final lower = name.toLowerCase();
+    final icon = lower.endsWith('.pdf')
+        ? Icons.picture_as_pdf_rounded
+        : lower.endsWith('.csv') || lower.endsWith('.xlsx')
+        ? Icons.table_chart_rounded
+        : lower.endsWith('.txt') ||
+              lower.endsWith('.md') ||
+              lower.endsWith('.json')
+        ? Icons.article_rounded
+        : Icons.insert_drive_file_rounded;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: AppColors.blue.withValues(alpha: .12),
+        borderRadius: BorderRadius.circular(size * .28),
+      ),
+      child: Icon(icon, color: AppColors.blue, size: size * .58),
+    );
+  }
+}
+
+class _UnsupportedUploadPreview extends StatelessWidget {
+  const _UnsupportedUploadPreview();
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppThemePalette.current;
+    return Padding(
+      padding: const EdgeInsets.all(28),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.insert_drive_file_rounded,
+            color: AppColors.blue.withValues(alpha: .75),
+            size: 46,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Preview is available for images and text files.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: palette.text, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'The selected file is attached for ArogyaX context.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: palette.muted, fontWeight: FontWeight.w700),
+          ),
+        ],
       ),
     );
   }
@@ -7406,25 +7582,10 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
   }
 }
 
-class AppPage extends StatefulWidget {
+class AppPage extends StatelessWidget {
   const AppPage({super.key, required this.child});
 
   final Widget child;
-
-  @override
-  State<AppPage> createState() => _AppPageState();
-}
-
-class _AppPageState extends State<AppPage> {
-  final _scrollMotion = ValueNotifier<double>(0);
-  Timer? _settleTimer;
-
-  @override
-  void dispose() {
-    _settleTimer?.cancel();
-    _scrollMotion.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -7438,56 +7599,14 @@ class _AppPageState extends State<AppPage> {
             colors: [palette.pageTop, palette.pageBottom],
           ),
         ),
-        child: NotificationListener<ScrollNotification>(
-          onNotification: _handleScroll,
-          child: ScrollMotionScope(
-            notifier: _scrollMotion,
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1440),
-                child: widget.child,
-              ),
-            ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1440),
+            child: child,
           ),
         ),
       ),
     );
-  }
-
-  bool _handleScroll(ScrollNotification notification) {
-    if (notification is ScrollUpdateNotification) {
-      final delta = notification.scrollDelta ?? 0;
-      if (delta.abs() > .4) {
-        final direction = delta > 0 ? -1.0 : 1.0;
-        _scrollMotion.value = direction;
-        _settleTimer?.cancel();
-        _settleTimer = Timer(const Duration(milliseconds: 230), () {
-          _scrollMotion.value = 0;
-        });
-      }
-    } else if (notification is OverscrollNotification) {
-      final direction = notification.overscroll > 0 ? -1.0 : 1.0;
-      _scrollMotion.value = direction;
-      _settleTimer?.cancel();
-      _settleTimer = Timer(const Duration(milliseconds: 260), () {
-        _scrollMotion.value = 0;
-      });
-    }
-    return false;
-  }
-}
-
-class ScrollMotionScope extends InheritedNotifier<ValueNotifier<double>> {
-  const ScrollMotionScope({
-    super.key,
-    required ValueNotifier<double> notifier,
-    required super.child,
-  }) : super(notifier: notifier);
-
-  static ValueNotifier<double>? maybeOf(BuildContext context) {
-    return context
-        .dependOnInheritedWidgetOfExactType<ScrollMotionScope>()
-        ?.notifier;
   }
 }
 
@@ -7543,6 +7662,40 @@ class LogoMark extends StatelessWidget {
         'assets/branding/jeevan_arogya_logo.png',
         fit: BoxFit.contain,
         semanticLabel: 'Jeevan Arogya',
+      ),
+    );
+  }
+}
+
+class ArogyaXLogoMark extends StatelessWidget {
+  const ArogyaXLogoMark({super.key, this.size = 56});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      padding: EdgeInsets.all(size * .04),
+      decoration: BoxDecoration(
+        color: Colors.black,
+        borderRadius: BorderRadius.circular(size * .28),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.blue.withValues(alpha: .25),
+            blurRadius: size * .32,
+            offset: Offset(0, size * .12),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(size * .22),
+        child: Image.asset(
+          'assets/branding/arogyax_logo.jpeg',
+          fit: BoxFit.cover,
+          semanticLabel: 'ArogyaX',
+        ),
       ),
     );
   }
@@ -8404,7 +8557,7 @@ class _DoctorAvatarState extends State<DoctorAvatar>
         animation: _controller,
         builder: (context, _) {
           return CustomPaint(
-            painter: DoctorCartoonPainter(
+            painter: DoctorPortraitPainter(
               progress: _controller.value,
               female: female,
               background: widget.doctor.color,
@@ -8416,8 +8569,8 @@ class _DoctorAvatarState extends State<DoctorAvatar>
   }
 }
 
-class DoctorCartoonPainter extends CustomPainter {
-  const DoctorCartoonPainter({
+class DoctorPortraitPainter extends CustomPainter {
+  const DoctorPortraitPainter({
     required this.progress,
     required this.female,
     required this.background,
@@ -8431,111 +8584,256 @@ class DoctorCartoonPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final c = size.center(Offset.zero);
     final r = size.shortestSide / 2;
-    final bob = math.sin(progress * math.pi * 2) * r * .035;
-    final bg = Paint()..color = background;
-    canvas.drawCircle(c, r, bg);
+    final pulse = math.sin(progress * math.pi * 2);
+    final bob = pulse * r * .018;
+
     canvas.drawCircle(
       c,
-      r * (.82 + progress * .04),
+      r,
       Paint()
-        ..color = Colors.white.withValues(alpha: .24)
+        ..shader = ui.Gradient.linear(
+          Offset(c.dx - r, c.dy - r),
+          Offset(c.dx + r, c.dy + r),
+          [
+            Color.lerp(background, Colors.white, .18)!,
+            const Color(0xFFEAF7FF),
+            Colors.white,
+          ],
+        ),
+    );
+    canvas.drawCircle(
+      c,
+      r * (.84 + progress * .035),
+      Paint()
+        ..color = AppColors.blue.withValues(alpha: .16)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = r * .06,
+        ..strokeWidth = r * .035,
+    );
+    canvas.drawCircle(
+      c,
+      r * .985,
+      Paint()
+        ..shader = ui.Gradient.sweep(c, [
+          AppColors.blue.withValues(alpha: .9),
+          AppColors.green.withValues(alpha: .78),
+          AppColors.blue.withValues(alpha: .9),
+        ])
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = r * .04,
     );
 
-    final skin = Paint()..color = const Color(0xFFFFD2B7);
+    final skin = Paint()
+      ..shader = ui.Gradient.linear(
+        Offset(c.dx - r * .35, c.dy - r * .6),
+        Offset(c.dx + r * .35, c.dy + r * .25),
+        const [Color(0xFFFFE1C7), Color(0xFFE8AA86)],
+      );
     final hair = Paint()
-      ..color = female ? const Color(0xFF2E1D16) : const Color(0xFF1F2937);
+      ..color = female ? const Color(0xFF302019) : const Color(0xFF111827);
     final coat = Paint()..color = Colors.white;
     final navy = Paint()..color = AppColors.navy;
-    final blue = Paint()..color = AppColors.blue;
-    final red = Paint()..color = AppColors.red;
 
-    final headCenter = Offset(c.dx, c.dy - r * .16 + bob);
-    if (female) {
-      canvas.drawOval(
-        Rect.fromCenter(
-          center: Offset(c.dx, c.dy - r * .04 + bob),
-          width: r * 1.04,
-          height: r * 1.26,
-        ),
-        hair,
-      );
-    } else {
-      canvas.drawOval(
-        Rect.fromCenter(
-          center: Offset(c.dx, c.dy - r * .31 + bob),
-          width: r * .9,
-          height: r * .45,
-        ),
-        hair,
-      );
-    }
-    canvas.drawCircle(headCenter, r * .36, skin);
-    canvas.drawArc(
-      Rect.fromCenter(
-        center: Offset(c.dx, c.dy - r * .30 + bob),
-        width: r * .78,
-        height: r * .45,
-      ),
-      math.pi,
-      math.pi,
-      true,
-      hair,
+    final bodyTop = c.dy + r * .16 + bob;
+    final shoulders = RRect.fromRectAndRadius(
+      Rect.fromLTWH(c.dx - r * .62, bodyTop, r * 1.24, r * .68),
+      Radius.circular(r * .22),
     );
-
-    final eyeY = headCenter.dy - r * .03;
-    for (final dx in [-r * .12, r * .12]) {
-      canvas.drawCircle(Offset(c.dx + dx, eyeY), r * .027, navy);
-    }
-    final smile = ui.Path()
-      ..moveTo(c.dx - r * .12, headCenter.dy + r * .13)
-      ..quadraticBezierTo(
-        c.dx,
-        headCenter.dy + r * (.21 + progress * .02),
-        c.dx + r * .12,
-        headCenter.dy + r * .13,
-      );
-    canvas.drawPath(
-      smile,
+    canvas.drawRRect(
+      shoulders,
       Paint()
-        ..color = AppColors.red.withValues(alpha: .72)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = r * .035
-        ..strokeCap = StrokeCap.round,
+        ..shader = ui.Gradient.linear(
+          Offset(c.dx - r * .65, bodyTop),
+          Offset(c.dx + r * .65, bodyTop + r * .7),
+          const [Color(0xFFF8FBFF), Color(0xFFE8F1FB)],
+        ),
     );
-
-    final bodyTop = c.dy + r * .22 + bob;
-    final body = RRect.fromRectAndRadius(
-      Rect.fromLTWH(c.dx - r * .48, bodyTop, r * .96, r * .72),
-      Radius.circular(r * .18),
-    );
-    canvas.drawRRect(body, coat);
     canvas.drawLine(
-      Offset(c.dx, bodyTop + r * .04),
-      Offset(c.dx, bodyTop + r * .66),
+      Offset(c.dx, bodyTop + r * .05),
+      Offset(c.dx, bodyTop + r * .63),
       Paint()
-        ..color = AppColors.line
-        ..strokeWidth = r * .025,
+        ..color = const Color(0xFFD7E4F2)
+        ..strokeWidth = r * .028,
     );
-    canvas.drawCircle(Offset(c.dx - r * .20, bodyTop + r * .26), r * .04, red);
+    final leftCollar = ui.Path()
+      ..moveTo(c.dx - r * .05, bodyTop + r * .04)
+      ..lineTo(c.dx - r * .34, bodyTop + r * .17)
+      ..lineTo(c.dx - r * .12, bodyTop + r * .42)
+      ..close();
+    final rightCollar = ui.Path()
+      ..moveTo(c.dx + r * .05, bodyTop + r * .04)
+      ..lineTo(c.dx + r * .34, bodyTop + r * .17)
+      ..lineTo(c.dx + r * .12, bodyTop + r * .42)
+      ..close();
+    canvas.drawPath(leftCollar, coat);
+    canvas.drawPath(rightCollar, coat);
+    canvas.drawCircle(
+      Offset(c.dx - r * .23, bodyTop + r * .34),
+      r * .035,
+      Paint()..color = AppColors.blue,
+    );
     canvas.drawLine(
-      Offset(c.dx + r * .16, bodyTop + r * .16),
-      Offset(c.dx + r * .28, bodyTop + r * .36),
+      Offset(c.dx + r * .18, bodyTop + r * .18),
+      Offset(c.dx + r * .31, bodyTop + r * .37),
       Paint()
         ..color = AppColors.blue
         ..strokeWidth = r * .035
         ..strokeCap = StrokeCap.round,
     );
     canvas.drawCircle(
-      Offset(c.dx + r * .30, bodyTop + r * .40),
-      r * .055,
-      blue,
+      Offset(c.dx + r * .33, bodyTop + r * .41),
+      r * .052,
+      Paint()..color = const Color(0xFF0F766E),
+    );
+
+    final neck = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: Offset(c.dx, c.dy + r * .09 + bob),
+        width: r * .28,
+        height: r * .28,
+      ),
+      Radius.circular(r * .08),
+    );
+    canvas.drawRRect(neck, skin);
+
+    final headCenter = Offset(c.dx, c.dy - r * .18 + bob);
+    if (female) {
+      final hairShape = ui.Path()
+        ..moveTo(c.dx - r * .46, c.dy - r * .15 + bob)
+        ..quadraticBezierTo(
+          c.dx - r * .43,
+          c.dy - r * .62 + bob,
+          c.dx,
+          c.dy - r * .66 + bob,
+        )
+        ..quadraticBezierTo(
+          c.dx + r * .43,
+          c.dy - r * .62 + bob,
+          c.dx + r * .46,
+          c.dy - r * .14 + bob,
+        )
+        ..quadraticBezierTo(
+          c.dx + r * .48,
+          c.dy + r * .18 + bob,
+          c.dx + r * .19,
+          c.dy + r * .27 + bob,
+        )
+        ..lineTo(c.dx - r * .19, c.dy + r * .27 + bob)
+        ..quadraticBezierTo(
+          c.dx - r * .48,
+          c.dy + r * .18 + bob,
+          c.dx - r * .46,
+          c.dy - r * .15 + bob,
+        )
+        ..close();
+      canvas.drawPath(hairShape, hair);
+    } else {
+      final hairShape = ui.Path()
+        ..moveTo(c.dx - r * .38, c.dy - r * .34 + bob)
+        ..quadraticBezierTo(
+          c.dx - r * .28,
+          c.dy - r * .66 + bob,
+          c.dx + r * .18,
+          c.dy - r * .55 + bob,
+        )
+        ..quadraticBezierTo(
+          c.dx + r * .44,
+          c.dy - r * .47 + bob,
+          c.dx + r * .35,
+          c.dy - r * .21 + bob,
+        )
+        ..quadraticBezierTo(
+          c.dx + r * .05,
+          c.dy - r * .36 + bob,
+          c.dx - r * .38,
+          c.dy - r * .20 + bob,
+        )
+        ..close();
+      canvas.drawPath(hairShape, hair);
+    }
+    canvas.drawOval(
+      Rect.fromCenter(center: headCenter, width: r * .68, height: r * .78),
+      skin,
+    );
+
+    final eyeY = headCenter.dy - r * .03;
+    for (final dx in [-r * .12, r * .12]) {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(
+            center: Offset(c.dx + dx, eyeY),
+            width: r * .08,
+            height: r * .035,
+          ),
+          Radius.circular(r * .02),
+        ),
+        navy,
+      );
+    }
+    canvas.drawLine(
+      Offset(c.dx - r * .19, eyeY - r * .09),
+      Offset(c.dx - r * .07, eyeY - r * .11),
+      Paint()
+        ..color = AppColors.navy.withValues(alpha: .55)
+        ..strokeWidth = r * .018
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.drawLine(
+      Offset(c.dx + r * .07, eyeY - r * .11),
+      Offset(c.dx + r * .19, eyeY - r * .09),
+      Paint()
+        ..color = AppColors.navy.withValues(alpha: .55)
+        ..strokeWidth = r * .018
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.drawLine(
+      Offset(c.dx, headCenter.dy + r * .01),
+      Offset(c.dx - r * .025, headCenter.dy + r * .08),
+      Paint()
+        ..color = const Color(0xFFC98262).withValues(alpha: .62)
+        ..strokeWidth = r * .018
+        ..strokeCap = StrokeCap.round,
+    );
+    final smile = ui.Path()
+      ..moveTo(c.dx - r * .13, headCenter.dy + r * .17)
+      ..quadraticBezierTo(
+        c.dx,
+        headCenter.dy + r * (.22 + pulse * .004),
+        c.dx + r * .13,
+        headCenter.dy + r * .17,
+      );
+    canvas.drawPath(
+      smile,
+      Paint()
+        ..color = const Color(0xFF9F5C4B).withValues(alpha: .74)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = r * .026
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(c.dx, headCenter.dy + r * .32),
+        width: r * .42,
+        height: r * .08,
+      ),
+      Paint()..color = Colors.black.withValues(alpha: .055),
+    );
+    canvas.drawCircle(
+      c,
+      r,
+      Paint()
+        ..shader = ui.Gradient.radial(
+          Offset(c.dx - r * .26, c.dy - r * .42),
+          r * .48,
+          [
+            Colors.white.withValues(alpha: .38),
+            Colors.white.withValues(alpha: 0),
+          ],
+        ),
     );
   }
 
   @override
-  bool shouldRepaint(covariant DoctorCartoonPainter oldDelegate) {
+  bool shouldRepaint(covariant DoctorPortraitPainter oldDelegate) {
     return oldDelegate.progress != progress ||
         oldDelegate.female != female ||
         oldDelegate.background != background;
@@ -10796,7 +11094,6 @@ class AppCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppThemePalette.current;
-    final motion = ScrollMotionScope.maybeOf(context);
     final card = Container(
       margin: margin,
       padding: padding,
@@ -10822,28 +11119,6 @@ class AppCard extends StatelessWidget {
             onTap: onTap,
             child: card,
           );
-
-    if (motion == null) {
-      return result;
-    }
-
-    return AnimatedBuilder(
-      animation: motion,
-      child: result,
-      builder: (context, child) {
-        final strength = motion.value.abs();
-        return AnimatedScale(
-          scale: 1 - strength * .016,
-          duration: const Duration(milliseconds: 190),
-          curve: Curves.easeOutCubic,
-          child: AnimatedSlide(
-            offset: Offset(0, motion.value * .055),
-            duration: const Duration(milliseconds: 190),
-            curve: Curves.easeOutCubic,
-            child: child,
-          ),
-        );
-      },
-    );
+    return result;
   }
 }
