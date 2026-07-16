@@ -1,9 +1,9 @@
 # Jeevan Arogya
 App created by:       
-Kunal Sahu (0818CL241109)
-Karthik KB(0818CL241094)
-Kartik sharma(0818CL241095)
-jitender prusty(0818CL241088)
+Kunal Sahu (0818CL241109).      
+Karthik KB(0818CL241094).       
+Kartik sharma(0818CL241095).     
+jitender prusty(0818CL241088). 
 
 Project Video link https://drive.google.com/file/d/1AV0KE_hIUv5cb_WFRpE1GCh6gwNcy2T5/view?usp=drivesdk
 
