@@ -4,6 +4,8 @@ Karthik KB(0818CL241094)
 Kartik sharma(0818CL241095)
 jitender prusty(0818CL241088)
 
+Project Video link https://drive.google.com/file/d/1AV0KE_hIUv5cb_WFRpE1GCh6gwNcy2T5/view?usp=drivesdk
+
 A Flutter healthcare assistance app with a polished mobile UI, emergency SOS flows, doctor discovery, hospital and medicine search, appointment screens, Supabase-ready auth, and database schema support.
 
 ## Features
